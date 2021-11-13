@@ -31,8 +31,8 @@ export class Assignment3 extends Scene {
             // TODO:  Fill in as many additional material objects as needed in this key/value table.
             //        (Requirement 4)
         }
-        this.position = vec3(0, 3, 20);
-        this.look_at = vec3(0,3,1);
+        this.position = vec3(30, 30, 30);
+        this.look_at = vec3(30,30,1);
         this.top = vec3(0,1,0);
         this.current_camera_location = Mat4.look_at(vec3(0, 6, 20), vec3(0, 0, 0), vec3(0, 1, 0));
         this.blocks = [];
@@ -76,18 +76,12 @@ export class Assignment3 extends Scene {
         if (this.thrust[2] == 1){
             let look_direction = this.look_at.minus(this.position);
             look_direction = vec3(look_direction[0], 0, look_direction[2]).normalized();
-            //console.log(look_direction)
             this.position = this.position.plus(look_direction.times(0.5));
             this.look_at = this.look_at.plus(look_direction.times(0.5));
-
-//             this.current_camera_location = this.current_camera_location.times(Mat4.translation())
-//             program_state.camera_inverse = program_state.camera_inverse[i]
-               
         }
         if (this.thrust[3] == 1){
             let look_direction = this.look_at.minus(this.position);
             look_direction = vec3(look_direction[0], 0, look_direction[2]).normalized();
-            //console.log(look_direction)
             this.position = this.position.minus(look_direction.times(0.5));
             this.look_at = this.look_at.minus(look_direction.times(0.5));
 
@@ -95,76 +89,78 @@ export class Assignment3 extends Scene {
         if (this.thrust[1] == 1){
             let look_direction = this.look_at.minus(this.position);
             let right = look_direction.cross(vec3(0,1,0)).normalized();
-            this.position = this.position.plus(right.times(0.2));
-            this.look_at = this.look_at.plus(right.times(0.2));
-            //console.log(this.look_at);
+            this.position = this.position.plus(right.times(0.5));
+            this.look_at = this.look_at.plus(right.times(0.5));
         }
         if (this.thrust[0] == 1) {
             let look_direction = this.look_at.minus(this.position);
             let right = look_direction.cross(vec3(0,1,0)).normalized();
-            this.position = this.position.minus(right.times(0.2));
-            this.look_at = this.look_at.minus(right.times(0.2));
+            this.position = this.position.minus(right.times(0.5));
+            this.look_at = this.look_at.minus(right.times(0.5));
         }
         if (this.direction[2] == 1) {
             let vec4LookAt = vec4(this.look_at[0], this.look_at[1], this.look_at[2], 1);
-            let vec4Top = vec4(this.top[0], this.top[1], this.top[2], 1);
             let look_direction = this.look_at.minus(this.position);
-            let rotationAxis = look_direction.cross(this.top).normalized();
+            let right = look_direction.cross(vec3(0,1,0)).normalized();
             let model_transform = Mat4.identity();
             model_transform = model_transform.times(Mat4.translation(this.position[0], this.position[1], this.position[2]));
-            model_transform = model_transform.times(Mat4.rotation(0.01, rotationAxis[0], rotationAxis[1], rotationAxis[2]));
+            model_transform = model_transform.times(Mat4.rotation(0.01, right[0], right[1], right[2]));
             model_transform = model_transform.times(Mat4.translation(this.position[0] * -1, this.position[1] * -1, this.position[2] * -1));
             vec4LookAt = model_transform.times(vec4LookAt);
-            vec4Top = Mat4.rotation(0.01, rotationAxis[0], rotationAxis[1], rotationAxis[2]).times(vec4Top);
 
-            this.look_at = vec3(vec4LookAt[0], vec4LookAt[1], vec4LookAt[2]);
-            this.top = vec3(vec4Top[0], vec4Top[1], vec4Top[2]);
+            let proposed_look_at = vec3(vec4LookAt[0], vec4LookAt[1], vec4LookAt[2]);
+            let proposed_direction = this.look_at.minus(this.position).normalized();
+            
+            if (vec3(0, 1, 0).dot(proposed_direction) < 0.99 ) {
+//                 console.log("up");
+//                 console.log(vec3(0, 1, 0).dot(proposed_direction));
+                this.look_at = proposed_look_at;
+            }
+            
 
-            //this.look_at = vec3(this.look_at[0], this.look_at[1]+0.05, this.look_at[2]);
-            //console.log(this.look_at);
         }
         if (this.direction[3] == 1){
+
             let vec4LookAt = vec4(this.look_at[0], this.look_at[1], this.look_at[2], 1);
-            let vec4Top = vec4(this.top[0], this.top[1], this.top[2], 1);
             let look_direction = this.look_at.minus(this.position);
-            let rotationAxis = look_direction.cross(this.top).normalized();
+            let right = look_direction.cross(vec3(0,1,0)).normalized();
             let model_transform = Mat4.identity();
             model_transform = model_transform.times(Mat4.translation(this.position[0], this.position[1], this.position[2]));
-            model_transform = model_transform.times(Mat4.rotation(-0.01, rotationAxis[0], rotationAxis[1], rotationAxis[2]));
+            model_transform = model_transform.times(Mat4.rotation(-0.01, right[0], right[1], right[2]));
             model_transform = model_transform.times(Mat4.translation(this.position[0] * -1, this.position[1] * -1, this.position[2] * -1));
             vec4LookAt = model_transform.times(vec4LookAt);
-            vec4Top = Mat4.rotation(-0.01, rotationAxis[0], rotationAxis[1], rotationAxis[2]).times(vec4Top);
 
-            this.look_at = vec3(vec4LookAt[0], vec4LookAt[1], vec4LookAt[2]);
-            this.top = vec3(vec4Top[0], vec4Top[1], vec4Top[2]);
-            
+            let proposed_look_at = vec3(vec4LookAt[0], vec4LookAt[1], vec4LookAt[2]);
+            let proposed_direction = this.look_at.minus(this.position).normalized();
+
+            if (vec3(0, 1, 0).dot(proposed_direction) > -0.99 ) {
+//                 console.log("down");
+//                 console.log(vec3(0, 1, 0).dot(proposed_direction));
+                this.look_at = proposed_look_at;
+            }
+
         }
         if (this.direction[0] == 1){
-            let temp = vec4(this.look_at[0], this.look_at[1], this.look_at[2], 1);
+            let vec4LookAt = vec4(this.look_at[0], this.look_at[1], this.look_at[2], 1);
             let model_transform = Mat4.identity();
             model_transform = model_transform.times(Mat4.translation(this.position[0], this.position[1], this.position[2]));
-            model_transform = model_transform.times(Mat4.rotation(0.01, this.top[0], this.top[1], this.top[2]));
+            model_transform = model_transform.times(Mat4.rotation(0.01, 0, 1, 0));
             model_transform = model_transform.times(Mat4.translation(this.position[0] * -1, this.position[1] * -1, this.position[2] * -1));
             //console.log(model_transform);
-            temp = model_transform.times(temp);
-            //console.log(temp);
-            this.look_at = vec3(temp[0], temp[1], temp[2]);
-            //console.log(this.look_at);
+            vec4LookAt = model_transform.times(vec4LookAt);
+            this.look_at = vec3(vec4LookAt[0], vec4LookAt[1], vec4LookAt[2]);
         }
         if (this.direction[1] == 1){
-            let temp = vec4(this.look_at[0], this.look_at[1], this.look_at[2], 1);
+            let vec4LookAt = vec4(this.look_at[0], this.look_at[1], this.look_at[2], 1);
             let model_transform = Mat4.identity();
             model_transform = model_transform.times(Mat4.translation(this.position[0], this.position[1], this.position[2]));
-            model_transform = model_transform.times(Mat4.rotation(-0.01, this.top[0], this.top[1], this.top[2]))
+            model_transform = model_transform.times(Mat4.rotation(-0.01, 0, 1, 0))
             model_transform = model_transform.times(Mat4.translation(this.position[0] * -1, this.position[1] * -1, this.position[2] * -1));
-            //console.log(model_transform);
-            temp = model_transform.times(temp);
-            //console.log(temp);
-            this.look_at = vec3(temp[0], temp[1], temp[2]);
-            //console.log(this.look_at);
+            vec4LookAt = model_transform.times(vec4LookAt);
+            this.look_at = vec3(vec4LookAt[0], vec4LookAt[1], vec4LookAt[2]);
         }
 
-        program_state.set_camera(Mat4.look_at(this.position, this.look_at, this.top));
+        program_state.set_camera(Mat4.look_at(this.position, this.look_at, vec3(0, 1, 0)));
         program_state.projection_transform = Mat4.perspective(
             Math.PI / 4, context.width / context.height, .1, 1000);
 
