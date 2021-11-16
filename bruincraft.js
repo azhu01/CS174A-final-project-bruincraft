@@ -51,6 +51,10 @@ export class BruinCraft extends Scene {
         }
     }
 
+    static getBlocks() {
+        return [2, 3, 4];
+    }
+
     make_control_panel() {
         // Draw the scene's buttons, setup their actions and keyboard shortcuts, and monitor live measurements.
     }
@@ -59,7 +63,7 @@ export class BruinCraft extends Scene {
         // display():  Called once per frame of animation.
         // Setup -- This part sets up the scene's overall camera matrix, projection matrix, and lights:
         if (!context.scratchpad.controls) {
-            this.children.push(context.scratchpad.controls = new Constrained_Movement_Controls());
+            this.children.push(context.scratchpad.controls = new Constrained_Movement_Controls(this.blocks));
             console.log("initialized");
             // Define the global camera and projection matrices, which are stored in program_state.
             program_state.set_camera(context.scratchpad.controls.current_camera_location);

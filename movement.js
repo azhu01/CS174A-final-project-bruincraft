@@ -1,11 +1,12 @@
 import {defs, tiny} from './examples/common.js';
+import {BruinCraft} from './bruincraft.js';
 
 const {
     Vector, Vector3, vec, vec3, vec4, color, hex_color, Shader, Matrix, Mat4, Light, Shape, Material, Scene,
 } = tiny;
 
 export class Constrained_Movement_Controls extends Scene {
-    constructor() {
+    constructor(blocks) {
         super()
         this.thrust = vec4(0,0,0,0);
         this.direction = vec4(0,0,0,0);
@@ -13,6 +14,7 @@ export class Constrained_Movement_Controls extends Scene {
         this.look_at = vec3(0, 3,1);
         this.top = vec3(0,1,0);
         this.current_camera_location = Mat4.look_at(vec3(0, 6, 20), vec3(0, 0, 0), vec3(0, 1, 0));
+        this.blocks = blocks;
     }
     make_control_panel() {
         // Draw the scene's buttons, setup their actions and keyboard shortcuts, and monitor live measurements.
@@ -112,6 +114,23 @@ export class Constrained_Movement_Controls extends Scene {
             vec4LookAt = model_transform.times(vec4LookAt);
             this.look_at = vec3(vec4LookAt[0], vec4LookAt[1], vec4LookAt[2]);
         }
+        //console.log(this.blocks.length);
+        
+        let posX = this.position[0];
+        let posY = this.position[1];
+        let posZ = this.position[2];
+        
+        for (let i = 0; i < this.blocks.length; i++) {
+           let blockX = this.blocks[i][0];
+           let blockY = this.blocks[i][1];
+           let blockZ = this.blocks[i][2];
+            
+           if (blockX + 2 > posX && blockX < posX + 2 && blockY + 2 > posY && blockY < posY + 2 && blockZ + 2 > posZ && blockZ < posZ + 2) {
+                // collision detected assuming bounding hitbox of 2 units
+                console.log("yes");
+           }
+        }
+        
 
         program_state.set_camera(Mat4.look_at(this.position, this.look_at, vec3(0, 1, 0)));
     }
