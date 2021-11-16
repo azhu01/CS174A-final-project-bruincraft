@@ -79,6 +79,10 @@ export class BruinCraft extends Scene {
         this.time = 0.0; 
     }
 
+    static getBlocks() {
+        return [2, 3, 4];
+    }
+
     make_control_panel() {
         // Draw the scene's buttons, setup their actions and keyboard shortcuts, and monitor live measurements.
     }
@@ -176,29 +180,6 @@ export class BruinCraft extends Scene {
         this.shapes.floor.draw(context, program_state, model_transform.times(Mat4.rotation(3*Math.PI / 2, 1, 0, 0)).times(Mat4.scale(10000, 10000, 1)), shadow_pass? this.materials.floor.override({color: green}) : this.materials.pure);
         this.shapes.background.draw(context, program_state, program_state.camera_transform.times(Mat4.translation(0, 0, -999.9)).times(Mat4.scale(10000, 10000, 1)), this.materials.background);
     }
-
-//     display(context, program_state) {
-//         // display():  Called once per frame of animation.
-//         // Setup -- This part sets up the scene's overall camera matrix, projection matrix, and lights:
-//         if (!context.scratchpad.controls) {
-//             this.children.push(context.scratchpad.controls = new Constrained_Movement_Controls());
-//             console.log("initialized");
-//             // Define the global camera and projection matrices, which are stored in program_state.
-//             program_state.set_camera(context.scratchpad.controls.current_camera_location);
-//         }
-//         program_state.projection_transform = Mat4.perspective(
-//             Math.PI / 4, context.width / context.height, .1, 1000);
-
-//         // TODO: Lighting (Requirement 2)
-//         const light_position = vec4(20, 5, 20, 1);
-//         // The parameters of the Light are: position, color, size
-//         program_state.lights = [new Light(light_position, color(5, 5, 5, 1), 10)];
-
-//         // TODO:  Fill in matrix operations and drawing code to draw the solar system scene (Requirements 3 and 4)
-//         const t = program_state.animation_time / 1000, dt = program_state.animation_delta_time / 1000;
-        
-//         //this.shapes.background.draw(context, program_state, program_state.camera_transform.times(Mat4.translation(0, 0, +999.9)).times(Mat4.scale(10000, 10000, 1)), this.materials.test.override({color: blue}));
-//     }
     display(context, program_state) {
         const t = program_state.animation_time;
         const gl = context.context;
