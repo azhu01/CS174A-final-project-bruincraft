@@ -113,9 +113,7 @@ export class Constrained_Movement_Controls extends Scene {
             model_transform = model_transform.times(Mat4.translation(this.position[0] * -1, this.position[1] * -1, this.position[2] * -1));
             vec4LookAt = model_transform.times(vec4LookAt);
             this.look_at = vec3(vec4LookAt[0], vec4LookAt[1], vec4LookAt[2]);
-        }
-        //console.log(this.blocks.length);
-        
+        }        
         let posX = this.position[0];
         let posY = this.position[1];
         let posZ = this.position[2];

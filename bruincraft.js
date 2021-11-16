@@ -195,7 +195,7 @@ export class BruinCraft extends Scene {
         }
 
        if (!context.scratchpad.controls) {
-            this.children.push(context.scratchpad.controls = new Constrained_Movement_Controls());
+            this.children.push(context.scratchpad.controls = new Constrained_Movement_Controls(this.blocks));
             console.log("initialized");
             // Define the global camera and projection matrices, which are stored in program_state.
             program_state.set_camera(context.scratchpad.controls.current_camera_location);
