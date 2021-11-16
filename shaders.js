@@ -16,11 +16,15 @@ export class Phong_Sunlight_Shader extends defs.Phong_Shader {
     shared_glsl_code() {
         // ********* SHARED CODE, INCLUDED IN BOTH SHADERS *********
         return super.shared_glsl_code() + `
-            uniform vec3 sunlight_direction;
+            uniform vec3 sunlight_direction_1;
+            uniform vec3 sunlight_direction_2;
+
             varying vec3 frag_normal;
+            varying vec3 vertex_eyespace;
             vec3 sunlight_model_lights( vec3 frag_normal ){
-                float light_angle = max(dot(frag_normal, normalize(-sunlight_direction)), 0.0);
-                return light_angle * 0.75 * shape_color.rgb;
+                float light_angle_1 = max(dot(frag_normal, normalize(-sunlight_direction_1)), 0.0);
+                float light_angle_2 = max(dot(frag_normal, normalize(-sunlight_direction_2)), 0.0);
+                return (light_angle_1 + light_angle_2) * 0.75 * shape_color.rgb;
               }`;
     }
 
@@ -33,6 +37,7 @@ export class Phong_Sunlight_Shader extends defs.Phong_Shader {
             uniform mat4 model_transform;
             uniform mat4 projection_camera_model_transform;
             uniform mat4 inverse_transpose_model_transform;
+            uniform mat4 camera_model_transform;
 
             void main(){                                                                   
                 // The vertex's final resting place (in NDCS):
@@ -41,6 +46,7 @@ export class Phong_Sunlight_Shader extends defs.Phong_Shader {
                 N = normalize( mat3( model_transform ) * normal / squared_scale);
                 frag_normal = normalize( mat3(inverse_transpose_model_transform) * normal);
                 vertex_worldspace = ( model_transform * vec4( position, 1.0 ) ).xyz;
+                vertex_eyespace = (camera_model_transform * vec4(position, 1.0)).xyz;
               } `;
     }
 
@@ -61,11 +67,15 @@ export class Phong_Sunlight_Shader extends defs.Phong_Shader {
     send_gpu_state(gl, gpu, gpu_state, model_transform) {
         super.send_gpu_state(gl, gpu, gpu_state, model_transform);
         gl.uniformMatrix4fv(gpu.inverse_transpose_model_transform, false, Matrix.flatten_2D_to_1D(Mat4.inverse(model_transform)));
+        gl.uniformMatrix4fv(gpu.camera_model_transform, false, Matrix.flatten_2D_to_1D(Mat4.inverse(gpu_state.camera_inverse.times(model_transform))));
+
     }
 
     update_GPU(context, gpu_addresses, gpu_state, model_transform, material) {
         super.update_GPU(context, gpu_addresses, gpu_state, model_transform, material);
-        context.uniform3fv(gpu_addresses.sunlight_direction, vec3(-0.5, -1, 0));
+        context.uniform3fv(gpu_addresses.sunlight_direction_1, vec3(-0.5, -1, -0.25));
+        context.uniform3fv(gpu_addresses.sunlight_direction_1, vec3(-0.25, -1, -0.75));
+
     }
 }
 
@@ -83,7 +93,7 @@ export class Background_Shader extends Shader {
         // ********* SHARED CODE, INCLUDED IN BOTH SHADERS *********
         return `
         precision mediump float;
-        varying vec4 point_position;
+        varying vec4 world_point_position;
         `;
     }
 
@@ -96,7 +106,7 @@ export class Background_Shader extends Shader {
         
         void main(){
           gl_Position = projection_camera_model_transform * vec4(position, 1.0);
-          point_position = model_transform * vec4(position, 1.0);
+          world_point_position = model_transform * vec4(position, 1.0);
         }`;
     }
 
@@ -106,7 +116,7 @@ export class Background_Shader extends Shader {
         void main(){
           //
           vec3 color = vec3(0.69, 1.0, 1.0);
-          float diff = clamp((1.0 - color.x) / 300.0 * (300.0 - point_position.y), 0.0, 1.0);
+          float diff = clamp((1.0 - color.x) / 300.0 * (300.0 - world_point_position.y), 0.0, 1.0);
           color.x = color.x + diff;
           gl_FragColor = vec4(color, 1.0);
         }`;
