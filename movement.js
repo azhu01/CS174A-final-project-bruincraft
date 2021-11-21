@@ -62,6 +62,7 @@ export class Constrained_Movement_Controls extends Scene {
             proposed_position = this.position.minus(right.times(0.5));
             proposed_look_at = this.look_at.minus(right.times(0.5));
         }
+        
         if (this.direction[2] == 1) {
             let vec4LookAt = vec4(this.look_at[0], this.look_at[1], this.look_at[2], 1);
             let look_direction = this.look_at.minus(this.position);
@@ -72,13 +73,13 @@ export class Constrained_Movement_Controls extends Scene {
             model_transform = model_transform.times(Mat4.translation(this.position[0] * -1, this.position[1] * -1, this.position[2] * -1));
             vec4LookAt = model_transform.times(vec4LookAt);
 
-            let proposed_look_at = vec3(vec4LookAt[0], vec4LookAt[1], vec4LookAt[2]);
+            let _proposed_look_at = vec3(vec4LookAt[0], vec4LookAt[1], vec4LookAt[2]);
             let proposed_direction = this.look_at.minus(this.position).normalized();
             
             if (vec3(0, 1, 0).dot(proposed_direction) < 0.99 ) {
 //                 console.log("up");
 //                 console.log(vec3(0, 1, 0).dot(proposed_direction));
-                this.look_at = proposed_look_at;
+                proposed_look_at = _proposed_look_at;
             }
             
 
@@ -94,13 +95,13 @@ export class Constrained_Movement_Controls extends Scene {
             model_transform = model_transform.times(Mat4.translation(this.position[0] * -1, this.position[1] * -1, this.position[2] * -1));
             vec4LookAt = model_transform.times(vec4LookAt);
 
-            let proposed_look_at = vec3(vec4LookAt[0], vec4LookAt[1], vec4LookAt[2]);
+            let _proposed_look_at = vec3(vec4LookAt[0], vec4LookAt[1], vec4LookAt[2]);
             let proposed_direction = this.look_at.minus(this.position).normalized();
 
             if (vec3(0, 1, 0).dot(proposed_direction) > -0.99 ) {
 //                 console.log("down");
 //                 console.log(vec3(0, 1, 0).dot(proposed_direction));
-                this.look_at = proposed_look_at;
+                proposed_look_at = _proposed_look_at;
             }
 
         }
@@ -112,7 +113,7 @@ export class Constrained_Movement_Controls extends Scene {
             model_transform = model_transform.times(Mat4.translation(this.position[0] * -1, this.position[1] * -1, this.position[2] * -1));
             //console.log(model_transform);
             vec4LookAt = model_transform.times(vec4LookAt);
-            this.look_at = vec3(vec4LookAt[0], vec4LookAt[1], vec4LookAt[2]);
+            proposed_look_at = vec3(vec4LookAt[0], vec4LookAt[1], vec4LookAt[2]);
         }
         if (this.direction[1] == 1){
             let vec4LookAt = vec4(this.look_at[0], this.look_at[1], this.look_at[2], 1);
@@ -121,7 +122,7 @@ export class Constrained_Movement_Controls extends Scene {
             model_transform = model_transform.times(Mat4.rotation(-0.02, 0, 1, 0))
             model_transform = model_transform.times(Mat4.translation(this.position[0] * -1, this.position[1] * -1, this.position[2] * -1));
             vec4LookAt = model_transform.times(vec4LookAt);
-            this.look_at = vec3(vec4LookAt[0], vec4LookAt[1], vec4LookAt[2]);
+            proposed_look_at = vec3(vec4LookAt[0], vec4LookAt[1], vec4LookAt[2]);
         }
 
         // Collision Detection Handling
