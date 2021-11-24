@@ -73,14 +73,12 @@ export class BruinCraft extends Scene {
         this.blocks.push([4, 4, 0]);
         this.blocks.push([4, 6, 0]);
 
-
+        this.blocks.push([8, 0, 0]);
+        this.blocks.push([12, 3, 0]);
+        this.blocks.push([16, 5, 0]);
 
         this.timescale = 1; //minutes / day -- realtime is 1440 minutes per day
         this.time = 0.0; 
-    }
-
-    static getBlocks() {
-        return [2, 3, 4];
     }
 
     make_control_panel() {

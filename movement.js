@@ -126,8 +126,10 @@ export class Constrained_Movement_Controls extends Scene {
         }
 
         // Collision Detection Handling
+        let floorOffset = 3;
+        let blockSize = 2;
         let posX = proposed_position[0];
-        let posY = proposed_position[1];
+        let posY = proposed_position[1] - floorOffset;
         let posZ = proposed_position[2];
         
         let collide = false;
@@ -137,7 +139,7 @@ export class Constrained_Movement_Controls extends Scene {
            let blockZ = this.blocks[i][2];
             
             // Assume a bounding hitbox of 2 units
-           if (blockX + 2 > posX && blockX < posX + 2 && blockY + 2 > posY && blockY < posY + 2 && blockZ + 2 > posZ && blockZ < posZ + 2) {
+           if (blockX + blockSize > posX && blockX < posX + blockSize && blockY + blockSize > posY && blockY < posY + blockSize + floorOffset && blockZ + blockSize > posZ && blockZ < posZ + blockSize) {
                 collide = true;
                 break;
            }
