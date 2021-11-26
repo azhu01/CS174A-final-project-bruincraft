@@ -1,8 +1,7 @@
 import {defs, tiny} from './examples/common.js';
-import {Background_Shader, Phong_Sunlight_Shader} from './shaders.js';
 import { Constrained_Movement_Controls } from './movement.js';
-import {Color_Phong_Shader, Shadow_Textured_Phong_Shader,
-    Depth_Texture_Shader_2D, Buffered_Texture, LIGHT_DEPTH_TEX_SIZE} from './shadow-demo-shaders.js'
+import {Background_Shader, Color_Phong_Shader, Shadow_Textured_Phong_Shader,
+    Depth_Texture_Shader_2D, Buffered_Texture, LIGHT_DEPTH_TEX_SIZE} from './shaders.js'
 
 const {
     Vector, Vector3, vec, vec3, vec4, color, hex_color, Shader, Matrix, Mat4, Light, Shape, Material, Scene,
@@ -28,8 +27,6 @@ export class BruinCraft extends Scene {
         // *** Materials
         this.materials = {
             test: new Material(new defs.Phong_Shader(),
-                {ambient: .4, diffusivity: .6, color: hex_color("#ffffff")}),
-            phong_sunlight: new Material(new Phong_Sunlight_Shader(),
                 {ambient: .4, diffusivity: .6, color: hex_color("#ffffff")}),
             background: new Material(new Background_Shader()),
 
