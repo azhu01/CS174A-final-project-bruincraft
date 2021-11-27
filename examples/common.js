@@ -697,6 +697,7 @@ const Phong_Shader = defs.Phong_Shader =
                 light_positions_flattened.push(gpu_state.lights[Math.floor(i / 4)].position[i % 4]);
                 light_colors_flattened.push(gpu_state.lights[Math.floor(i / 4)].color[i % 4]);
             }
+            //console.log(light_positions_flattened);
             gl.uniform4fv(gpu.light_positions_or_vectors, light_positions_flattened);
             gl.uniform4fv(gpu.light_colors, light_colors_flattened);
             gl.uniform1fv(gpu.light_attenuation_factors, gpu_state.lights.map(l => l.attenuation));
