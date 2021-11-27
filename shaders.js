@@ -60,7 +60,7 @@ export class Color_Phong_Shader extends defs.Phong_Shader {
 
                 varying vec3 frag_normal;
                 vec3 sunlight_model_lights( vec3 frag_normal ){
-                    float light_angle = max(dot(frag_normal, normalize(-sunlight_direction)), 0.0);
+                    float light_angle = max(dot(frag_normal, normalize(sunlight_direction)), 0.0);
                     return light_angle * 0.25 * shape_color.rgb;
                 }`;
         }
@@ -103,7 +103,7 @@ export class Color_Phong_Shader extends defs.Phong_Shader {
                     gl_FragColor = vec4( (shape_color.xyz ) * ambient, shape_color.w ); 
                                                                              // Compute the final color with contributions from lights:
                     gl_FragColor.xyz += phong_model_lights( normalize( N ), vertex_worldspace );
-                    gl_FragColor.xyz += sunlight_model_lights( frag_normal );
+                    //gl_FragColor.xyz += sunlight_model_lights( frag_normal );
 
                   } `;
         }
@@ -151,7 +151,8 @@ export class Color_Phong_Shader extends defs.Phong_Shader {
             super.update_GPU(context, gpu_addresses, gpu_state, model_transform, material);
             // Updated for assignment 4
             context.uniform1f(gpu_addresses.animation_time, gpu_state.animation_time / 1000);
-            context.uniform3fv(gpu_addresses.sunlight_direction, vec3(1.0, 0.0, 0.0));
+            const sun_dir = gpu_state.sunlight_direction;
+            context.uniform3fv(gpu_addresses.sunlight_direction, [sun_dir[0], sun_dir[1], sun_dir[2]]);
         }
     }
 
@@ -181,7 +182,7 @@ export class Shadow_Textured_Phong_Shader extends defs.Phong_Shader {
                     vec3 result = vec3( 0.0 );
                     light_diffuse_contribution = vec3( 0.0 );
                     light_specular_contribution = vec3( 0.0 );
-                    for(int i = 0; i < N_LIGHTS; i++){
+                    for(int i = 0; i <= N_LIGHTS; i++){
                         // Lights store homogeneous coords - either a position or vector.  If w is 0, the 
                         // light will appear directional (uniform direction from all points), and we 
                         // simply obtain a vector towards the light by directly using the stored value.
@@ -209,7 +210,7 @@ export class Shadow_Textured_Phong_Shader extends defs.Phong_Shader {
                     return result;
                   } 
                   vec3 sunlight_model_lights( vec3 frag_normal ){
-                    float light_angle = max(dot(frag_normal, normalize(-sunlight_direction)), 0.0);
+                    float light_angle = max(dot(frag_normal, normalize(sunlight_direction)), 0.0);
                     return light_angle * 0.25 * shape_color.rgb;
                   }`;
         }
@@ -245,26 +246,36 @@ export class Shadow_Textured_Phong_Shader extends defs.Phong_Shader {
               } 
             `
         };
+        makeSunCase() {
+            return `
+              if (i == N_LIGHTS) {
+                light_depth_value = texture2D(sun_texture, center + vec2(x, y) * texel_size).r;
+              } 
+            `
+        }
 
         makeAllCases() {
             let cases = '';
             for (let i = 1; i < this.num_lights; i++) {
                 cases += this.makeCase(i);
             }
-            return cases;
-            console.log(cases);
+            return cases + this.makeSunCase();
         }
 
         fragment_glsl_code() {
             // ********* FRAGMENT SHADER *********
             // A fragment is a pixel that's overlapped by the current triangle.
             // Fragments affect the final image or get discarded due to depth.
+            console.log(this.makeAllCases)
             return this.shared_glsl_code() + `
                 varying vec2 f_tex_coord;
                 uniform sampler2D texture;
                 uniform mat4 light_view_mats[N_LIGHTS];
                 uniform mat4 light_proj_mats[N_LIGHTS];
                 uniform sampler2D light_depth_textures[N_LIGHTS];
+                uniform mat4 sun_view_mat;
+                uniform mat4 sun_proj_mat;
+                uniform sampler2D sun_texture;
                 uniform float animation_time;
                 uniform float light_depth_bias;
                 uniform bool use_texture;
@@ -284,14 +295,17 @@ export class Shadow_Textured_Phong_Shader extends defs.Phong_Shader {
                     // Compute the final color with contributions from lights:
                     vec3 diffuse, specular;
                     vec3 other_than_ambient = phong_model_lights( normalize( N ), vertex_worldspace, diffuse, specular );
-                    gl_FragColor.xyz += sunlight_model_lights( frag_normal );
+                    vec3 sun_light = sunlight_model_lights( frag_normal );
 
                     
                     // Deal with shadow:
                     if (draw_shadow) {
-                        for (int i = 0; i < N_LIGHTS; i++) {
+                        for (int i = 0; i <= N_LIGHTS; i++) {
 
                             vec4 light_tex_coord = (light_proj_mats[i] * light_view_mats[i] * vec4(vertex_worldspace, 1.0));
+                            if (i == N_LIGHTS) {
+                                light_tex_coord = (sun_proj_mat * sun_view_mat * vec4(vertex_worldspace, 1.0));
+                            }
                             // convert NDCS from light's POV to light depth texture coordinates
                             light_tex_coord.xyz /= light_tex_coord.w; 
                             light_tex_coord.xyz *= 0.5;
@@ -329,7 +343,7 @@ export class Shadow_Textured_Phong_Shader extends defs.Phong_Shader {
                         }
                     }
                     
-                    gl_FragColor.xyz += diffuse + specular;
+                    gl_FragColor.xyz += diffuse + specular + sun_light;
                 } `;
         }
 
@@ -355,6 +369,10 @@ export class Shadow_Textured_Phong_Shader extends defs.Phong_Shader {
             gl.uniformMatrix4fv(gpu.projection_camera_model_transform, false, Matrix.flatten_2D_to_1D(PCM.transposed()));
             gl.uniformMatrix4fv(gpu.inverse_transpose_model_transform, false, Matrix.flatten_2D_to_1D(Mat4.inverse(model_transform)));
             // shadow related  
+            gl.uniformMatrix4fv(gpu.sun_view_mat, false, Matrix.flatten_2D_to_1D(gpu_state.sun_view_mat.transposed()));
+            gl.uniformMatrix4fv(gpu.sun_proj_mat, false, Matrix.flatten_2D_to_1D(gpu_state.sun_proj_mat.transposed()));
+
+
             const light_view_mats_flattened = [], light_proj_mats_flattened = [];
             for (let i = 0; i < gpu_state.light_view_mats.length; i++) {
                 let light_view_mat_flattened = Matrix.flatten_2D_to_1D(gpu_state.light_view_mats[i].transposed());
@@ -380,7 +398,8 @@ export class Shadow_Textured_Phong_Shader extends defs.Phong_Shader {
             gl.uniform4fv(gpu.light_positions_or_vectors, light_positions_flattened);
             gl.uniform4fv(gpu.light_colors, light_colors_flattened);
             gl.uniform1fv(gpu.light_attenuation_factors, gpu_state.lights.map(l => l.attenuation));
-            gl.uniform3fv(gpu.sunlight_direction, vec3(1.0, 0, 0));
+            const sun_dir = gpu_state.sunlight_direction;
+            gl.uniform3fv(gpu.sunlight_direction, [sun_dir[0], sun_dir[1], sun_dir[2]]);
 
         }
 
@@ -405,16 +424,22 @@ export class Shadow_Textured_Phong_Shader extends defs.Phong_Shader {
                 context.uniform1f(gpu_addresses.light_depth_bias, 0.003);
                 context.uniform1f(gpu_addresses.light_texture_size, LIGHT_DEPTH_TEX_SIZE);
 
+                context.uniform1i(gpu_addresses.sun_texture, 2);
+                if (material.sun_texture && material.sun_texture.ready) {
+                    context.activeTexture(context["TEXTURE" + 2]);
+                    material.sun_texture.activate(context, 2);
+                }
+
                 let range = [];
                 for(let i = 0; i < gpu_state.lights.length; i++) {
-                    range.push(i + 2);
+                    range.push(i + 3);
                 }
                 context.uniform1iv(gpu_addresses.light_depth_textures, range);
 
                 for (let i = 0; i < gpu_state.lights.length; i++) {                        
                     if (material.light_depth_textures[i] && material.light_depth_textures[i].ready) {
-                        context.activeTexture(context["TEXTURE" + (i + 2)]);
-                        material.light_depth_textures[i].activate(context, i + 2);
+                        context.activeTexture(context["TEXTURE" + (i + 3)]);
+                        material.light_depth_textures[i].activate(context, i + 3);
                     }
                 }
 

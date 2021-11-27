@@ -617,9 +617,10 @@ const Mat4 = tiny.Mat4 =
 
         static orthographic(left, right, bottom, top, near, far) {
             // orthographic(): Box-shaped view volume for projection.
-            return Mat4.scale(vec3(1 / (right - left), 1 / (top - bottom), 1 / (far - near)))
-                .times(Mat4.translation(vec3(-left - right, -top - bottom, -near - far)))
-                .times(Mat4.scale(vec3(2, 2, -2)));
+
+            return Mat4.scale(1 / (right - left), 1 / (top - bottom), 1 / (far - near))
+                .times(Mat4.translation(-left - right, -top - bottom, -near - far))
+                .times(Mat4.scale(2, 2, -2));
         }
 
         static perspective(fov_y, aspect, near, far) {

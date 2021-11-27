@@ -30,9 +30,8 @@ export class BruinCraft extends Scene {
             floor: new Material(new Shadow_Textured_Phong_Shader(), {
                 color: color(1, 1, 1, 1), ambient: .3, diffusivity: 0.6, specularity: 0.4, smoothness: 64,
                 color_texture: null,
-                light_depth_texture: null,
-                light_depth_texture_2: null,
-                light_depth_textures: []
+                light_depth_textures: [],
+                sun_texture: null
             }),
 
             // For the first pass
@@ -87,6 +86,23 @@ export class BruinCraft extends Scene {
         this.lights.push(light);
         this.materials.floor.shader.num_lights = this.lights.length;
 
+        this.texture_buffer_init(gl);
+
+        this.lightDepthTextures.push(this.lightDepthTexture);
+        this.lightDepthFramebuffers.push(this.lightDepthFramebuffer);
+        this.materials.floor.light_depth_textures.push(this.light_depth_texture);
+
+    }
+
+    add_sun(gl) {
+        this.texture_buffer_init(gl);
+        this.sunDepthTexture = this.lightDepthTexture;
+        this.sun_texture = this.light_depth_texture;
+        this.sunDepthFramebuffer = this.lightDepthFramebuffer;
+        this.materials.floor.sun_texture = this.light_depth_texture;
+    }
+
+    texture_buffer_init(gl) {
         // Depth Texture
         this.lightDepthTexture = gl.createTexture();
 
@@ -148,11 +164,6 @@ export class BruinCraft extends Scene {
             this.unusedTexture,         // texture
             0);                    // mip level
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-
-        this.lightDepthTextures.push(this.lightDepthTexture);
-        this.lightDepthFramebuffers.push(this.lightDepthFramebuffer);
-        this.materials.floor.light_depth_textures.push(this.light_depth_texture);
-
     }
 
     render_scene(context, program_state, shadow_pass, draw_light_source=false, draw_shadow=false) {
@@ -195,6 +206,8 @@ export class BruinCraft extends Scene {
                 return alert('need WEBGL_depth_texture');  // eslint-disable-line
             }
 
+            this.add_sun(gl);
+
             let light_position = Mat4.rotation(0 / 1500, 0, 1, 0).times(vec4(0, 10, 0, 1));
             let light_position_2 = Mat4.rotation(0 / 1500, 0, 1, 0).times(vec4(10, 10, 4, 1));
             let light_position_3 = Mat4.rotation(0 / 1500, 0, 1, 0).times(vec4(10, 10, -4, 1));
@@ -215,10 +228,10 @@ export class BruinCraft extends Scene {
 
             let light_field_of_view = 130 * Math.PI / 180; // 130 degree
 
-            //this.add_light_source(new DirectedLight(light_position, light_color, 1000, light_view_target, light_field_of_view), gl);
-            this.add_light_source(new DirectedLight(light_position_2, light_color_2, 1000, light_view_target_2, light_field_of_view), gl);
+            this.add_light_source(new DirectedLight(light_position, light_color, 1000, light_view_target, light_field_of_view), gl);
+            //this.add_light_source(new DirectedLight(light_position_2, light_color_2, 1000, light_view_target_2, light_field_of_view), gl);
             //this.add_light_source(new DirectedLight(light_position_3, light_color_3, 1000, light_view_target_3, light_field_of_view), gl);
-            this.add_light_source(new DirectedLight(light_position_4, light_color_4, 1000, light_view_target_4, light_field_of_view), gl);
+            //this.add_light_source(new DirectedLight(light_position_4, light_color_4, 1000, light_view_target_4, light_field_of_view), gl);
 
 
             this.init_ok = true;
@@ -233,10 +246,40 @@ export class BruinCraft extends Scene {
         
         program_state.lights = this.lights.map(x => x.light);
 
+        //Sun stuff
+
+        let sun_position = vec3(0, 5, 10);
+
+        program_state.sunlight_direction = sun_position;
+
+        const sun_view_mat = Mat4.look_at(
+            vec3(sun_position[0], sun_position[1], sun_position[2]),
+            vec3(0, 0, 0),
+            vec3(0, 1, 0), // assume the light to target will have a up dir of +y, maybe need to change according to your case
+        );
+        
+        //const sun_proj_mat = Mat4.perspective(130 * Math.PI / 180, 1, 0.5, 2000);
+        const sun_proj_mat = Mat4.orthographic(-20.0, 20.0, -20.0, 20.0, 0.1, 100.0);
+        
+        // Bind the Depth Texture Buffer
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.sunDepthFramebuffer);
+        gl.viewport(0, 0, this.lightDepthTextureSize, this.lightDepthTextureSize);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+        
+        // Prepare uniforms
+        program_state.light_view_mat = sun_view_mat;
+        program_state.light_proj_mat = sun_proj_mat;
+        program_state.light_tex_mat = sun_proj_mat;
+        program_state.view_mat = sun_view_mat;
+        program_state.projection_transform = sun_proj_mat;
+        this.render_scene(context, program_state, false, false, false);
+
+
         // Step 1: set the perspective and camera to the POV of light
 
         let light_view_mats = [];
         let light_proj_mats = [];
+
         for (let i = 0; i < this.lights.length; i++) {
             let curr_light = this.lights[i];
             const light_view_mat = Mat4.look_at(
@@ -250,14 +293,14 @@ export class BruinCraft extends Scene {
             gl.bindFramebuffer(gl.FRAMEBUFFER, this.lightDepthFramebuffers[i]);
             gl.viewport(0, 0, this.lightDepthTextureSize, this.lightDepthTextureSize);
             gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-            // Prepare uniforms
             
+            // Prepare uniforms
             program_state.light_view_mat = light_view_mat;
             program_state.light_proj_mat = light_proj_mat;
             program_state.light_tex_mat = light_proj_mat;
             program_state.view_mat = light_view_mat;
             program_state.projection_transform = light_proj_mat;
-            this.render_scene(context, program_state, false,false, false);
+            this.render_scene(context, program_state, false, false, false);
             
             light_view_mats.push(light_view_mat);
             light_proj_mats.push(light_proj_mat);
@@ -265,6 +308,8 @@ export class BruinCraft extends Scene {
 
         program_state.light_view_mats = light_view_mats;
         program_state.light_proj_mats = light_proj_mats;
+        program_state.sun_view_mat = sun_view_mat;
+        program_state.sun_proj_mat = sun_proj_mat;
 
         // Step 2: unbind, draw to the canvas
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -272,21 +317,21 @@ export class BruinCraft extends Scene {
         program_state.view_mat = program_state.camera_inverse;
         program_state.projection_transform = Mat4.perspective(
             Math.PI / 4, context.width / context.height, .1, 1000);        
-        this.render_scene(context, program_state, true,true, true);
+        this.render_scene(context, program_state, true, true, true);
 
 
         // this.shapes.square_2d.draw(context, program_state,
         //     Mat4.translation(-0.6, 0, 0).times(
         //     Mat4.scale(0.25, 0.25 * gl.canvas.width / gl.canvas.height, 0.25)
         //     ),
-        //     this.materials.depth_tex.override({texture: this.lightDepthTextures[0]})
+        //     this.materials.depth_tex.override({texture: this.sunDepthTexture})
         // );
 
         // this.shapes.square_2d.draw(context, program_state,
         //     Mat4.translation(0.6, 0, 0).times(
         //     Mat4.scale(0.25, 0.25 * gl.canvas.width / gl.canvas.height, 0.25)
         //     ),
-        //     this.materials.depth_tex.override({texture: this.lightDepthTextures[1]})
+        //     this.materials.depth_tex.override({texture: this.materials.floor.sun_texture})
         // );
     }
     
