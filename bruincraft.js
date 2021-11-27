@@ -17,6 +17,7 @@ export class BruinCraft extends Scene {
             torus2: new defs.Torus(3, 15),
             sphere: new defs.Subdivision_Sphere(4),
             circle: new defs.Regular_2D_Polygon(1, 15),
+            square_2d: new defs.Square(),
             // TODO:  Fill in as many additional shape instances as needed in this key/value table.
             //        (Requirement 1)
             block: new defs.Cube(),
@@ -31,10 +32,11 @@ export class BruinCraft extends Scene {
             background: new Material(new Background_Shader()),
 
             // For the floor or other plain objects
-            floor: new Material(new Shadow_Textured_Phong_Shader(1), {
+            floor: new Material(new Shadow_Textured_Phong_Shader(2), {
                 color: color(1, 1, 1, 1), ambient: .3, diffusivity: 0.6, specularity: 0.4, smoothness: 64,
                 color_texture: null,
-                light_depth_texture: null
+                light_depth_texture: null,
+                light_depth_texture_2: null,
             }),
             // For the first pass
             pure: new Material(new Color_Phong_Shader(), {
@@ -43,6 +45,10 @@ export class BruinCraft extends Scene {
             // For light source
             light_src: new Material(new defs.Phong_Shader(), {
                 color: color(1, 1, 1, 1), ambient: 1, diffusivity: 0, specularity: 0
+            }),
+            depth_tex: new Material(new Depth_Texture_Shader_2D(), {
+                color: color(0, 0, .0, 1),
+                ambient: 1, diffusivity: 0, specularity: 0, texture: null
             })
         }
 
@@ -144,6 +150,71 @@ export class BruinCraft extends Scene {
             this.unusedTexture,         // texture
             0);                    // mip level
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+
+        //split ----
+
+        // Depth Texture
+        this.lightDepthTexture_2 = gl.createTexture();
+        // Bind it to TinyGraphics
+        this.light_depth_texture_2 = new Buffered_Texture(this.lightDepthTexture_2);
+        this.materials.floor.light_depth_texture_2 = this.light_depth_texture_2;
+
+        this.lightDepthTextureSize = LIGHT_DEPTH_TEX_SIZE;
+        gl.bindTexture(gl.TEXTURE_2D, this.lightDepthTexture_2);
+        gl.texImage2D(
+            gl.TEXTURE_2D,      // target
+            0,                  // mip level
+            gl.DEPTH_COMPONENT, // internal format
+            this.lightDepthTextureSize,   // width
+            this.lightDepthTextureSize,   // height
+            0,                  // border
+            gl.DEPTH_COMPONENT, // format
+            gl.UNSIGNED_INT,    // type
+            null);              // data
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+
+        // Depth Texture Buffer
+        this.lightDepthFramebuffer_2 = gl.createFramebuffer();
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.lightDepthFramebuffer_2);
+        gl.framebufferTexture2D(
+            gl.FRAMEBUFFER,       // target
+            gl.DEPTH_ATTACHMENT,  // attachment point
+            gl.TEXTURE_2D,        // texture target
+            this.lightDepthTexture_2,         // texture
+            0);                   // mip level
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+        // create a color texture of the same size as the depth texture
+        // see article why this is needed_
+        this.unusedTexture_2 = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, this.unusedTexture_2);
+        gl.texImage2D(
+            gl.TEXTURE_2D,
+            0,
+            gl.RGBA,
+            this.lightDepthTextureSize,
+            this.lightDepthTextureSize,
+            0,
+            gl.RGBA,
+            gl.UNSIGNED_BYTE,
+            null,
+        );
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        // attach it to the framebuffer
+        gl.framebufferTexture2D(
+            gl.FRAMEBUFFER,        // target
+            gl.COLOR_ATTACHMENT0,  // attachment point
+            gl.TEXTURE_2D,         // texture target
+            this.unusedTexture_2,         // texture
+            0);                    // mip level
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     }
     render_scene(context, program_state, shadow_pass, draw_light_source=false, draw_shadow=false) {
         // shadow_pass: true if this is the second pass that draw the shadow.
@@ -152,6 +223,9 @@ export class BruinCraft extends Scene {
 
         let light_position = this.light_position;
         let light_color = this.light_color;
+
+        let light_position_2 = this.light_position_2;
+        let light_color_2 = this.light_color_2;
         const t = program_state.animation_time;
 
         program_state.draw_shadow = draw_shadow;
@@ -160,6 +234,9 @@ export class BruinCraft extends Scene {
             this.shapes.sphere.draw(context, program_state,
                 Mat4.translation(light_position[0], light_position[1], light_position[2]).times(Mat4.scale(.5,.5,.5)),
                 this.materials.light_src.override({color: light_color}));
+            this.shapes.sphere.draw(context, program_state,
+                Mat4.translation(light_position_2[0], light_position_2[1], light_position_2[2]).times(Mat4.scale(.5,.5,.5)),
+                this.materials.light_src.override({color: light_color_2}));
         }
 
         const yellow = hex_color("#fac91a");
@@ -197,7 +274,9 @@ export class BruinCraft extends Scene {
         }
 
         // The position of the light
-        this.light_position = Mat4.rotation(t / 1500, 0, 1, 0).times(vec4(3, 10, 0, 1));
+        this.light_position = Mat4.rotation(0 / 1500, 0, 1, 0).times(vec4(0, 10, 0, 1));
+        this.light_position_2 = Mat4.rotation(0 / 1500, 0, 1, 0).times(vec4(10, 10, 4, 1));
+        
         // The color of the light
 //         this.light_color = color(
 //             0.667 + Math.sin(t/500) / 3,
@@ -206,13 +285,16 @@ export class BruinCraft extends Scene {
 //             1
 //         );
         this.light_color = color(1, 1, 1, 1);
+        this.light_color_2 = color(1, 0, 0, 1);
 
         // This is a rough target of the light.
         // Although the light is point light, we need a target to set the POV of the light
-        this.light_view_target = vec4(0, 1, 0, 1);
-        this.light_field_of_view = 130 * Math.PI / 180; // 130 degree
+        this.light_view_target = vec4(1, 1, 0, 1);
 
-        program_state.lights = [new Light(this.light_position, this.light_color, 1000)];
+        this.light_view_target_2 = vec4(10, 1, 2, 1);
+
+        this.light_field_of_view = 130 * Math.PI / 180; // 130 degree
+        program_state.lights = [new Light(this.light_position, this.light_color, 1000), new Light(this.light_position_2, this.light_color_2, 1000)];
 
         // Step 1: set the perspective and camera to the POV of light
         const light_view_mat = Mat4.look_at(
@@ -221,17 +303,43 @@ export class BruinCraft extends Scene {
             vec3(0, 1, 0), // assume the light to target will have a up dir of +y, maybe need to change according to your case
         );
         const light_proj_mat = Mat4.perspective(this.light_field_of_view, 1, 0.5, 500);
+
+        const light_view_mat_2 = Mat4.look_at(
+            vec3(this.light_position_2[0], this.light_position_2[1], this.light_position_2[2]),
+            vec3(this.light_view_target_2[0], this.light_view_target_2[1], this.light_view_target_2[2]),
+            vec3(0, 1, 0), // assume the light to target will have a up dir of +y, maybe need to change according to your case
+        );
+        const light_proj_mat_2 = Mat4.perspective(this.light_field_of_view, 1, 0.5, 500);
+
         // Bind the Depth Texture Buffer
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.lightDepthFramebuffer);
         gl.viewport(0, 0, this.lightDepthTextureSize, this.lightDepthTextureSize);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
         // Prepare uniforms
+        
         program_state.light_view_mat = light_view_mat;
         program_state.light_proj_mat = light_proj_mat;
         program_state.light_tex_mat = light_proj_mat;
         program_state.view_mat = light_view_mat;
         program_state.projection_transform = light_proj_mat;
         this.render_scene(context, program_state, false,false, false);
+
+        gl.bindFramebuffer(gl.FRAMEBUFFER, this.lightDepthFramebuffer_2);
+        gl.viewport(0, 0, this.lightDepthTextureSize, this.lightDepthTextureSize);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+        program_state.light_view_mat = light_view_mat_2;
+        program_state.light_proj_mat = light_proj_mat_2;
+        program_state.light_tex_mat = light_proj_mat_2;
+        program_state.view_mat = light_view_mat_2;
+        program_state.projection_transform = light_proj_mat_2;
+        this.render_scene(context, program_state, false,false, false);
+
+        program_state.light_view_mat = light_view_mat;
+        program_state.light_proj_mat = light_proj_mat;
+        program_state.light_tex_mat = light_proj_mat;
+        program_state.light_view_mat_2 = light_view_mat_2;
+        program_state.light_proj_mat_2 = light_proj_mat_2;
 
         // Step 2: unbind, draw to the canvas
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -240,7 +348,23 @@ export class BruinCraft extends Scene {
         program_state.projection_transform = Mat4.perspective(
             Math.PI / 4, context.width / context.height, .1, 1000);        
         this.render_scene(context, program_state, true,true, true);
+
+
+        // this.shapes.square_2d.draw(context, program_state,
+        //     Mat4.translation(-0.6, 0, 0).times(
+        //     Mat4.scale(0.25, 0.25 * gl.canvas.width / gl.canvas.height, 0.25)
+        //     ),
+        //     this.materials.depth_tex.override({texture: this.lightDepthTexture})
+        // );
+
+        // this.shapes.square_2d.draw(context, program_state,
+        //     Mat4.translation(0.6, 0, 0).times(
+        //     Mat4.scale(0.25, 0.25 * gl.canvas.width / gl.canvas.height, 0.25)
+        //     ),
+        //     this.materials.depth_tex.override({texture: this.lightDepthTexture_2})
+        // );
     }
+    
 }
 
 

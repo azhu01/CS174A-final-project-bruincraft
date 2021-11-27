@@ -61,7 +61,7 @@ export class Color_Phong_Shader extends defs.Phong_Shader {
                 varying vec3 frag_normal;
                 vec3 sunlight_model_lights( vec3 frag_normal ){
                     float light_angle = max(dot(frag_normal, normalize(-sunlight_direction)), 0.0);
-                    return light_angle * shape_color.rgb;
+                    return light_angle * 0.25 * shape_color.rgb;
                 }`;
         }
 
@@ -246,22 +246,29 @@ export class Shadow_Textured_Phong_Shader extends defs.Phong_Shader {
                 varying vec2 f_tex_coord;
                 uniform sampler2D texture;
                 uniform sampler2D light_depth_texture;
+                uniform sampler2D light_depth_texture_2;
                 uniform mat4 light_view_mat;
                 uniform mat4 light_proj_mat;
+                uniform mat4 light_view_mat_2;
+                uniform mat4 light_proj_mat_2;
                 uniform float animation_time;
                 uniform float light_depth_bias;
                 uniform bool use_texture;
                 uniform bool draw_shadow;
                 uniform float light_texture_size;
                 
-                float PCF_shadow(vec2 center, float projected_depth) {
+                float PCF_shadow(vec2 center, float projected_depth, int a) {
                     float shadow = 0.0;
                     float texel_size = 1.0 / light_texture_size;
+
                     for(int x = -1; x <= 1; ++x)
                     {
                         for(int y = -1; y <= 1; ++y)
                         {
                             float light_depth_value = texture2D(light_depth_texture, center + vec2(x, y) * texel_size).r; 
+                            if (a == 2) {
+                                light_depth_value = texture2D(light_depth_texture_2, center + vec2(x, y) * texel_size).r;
+                            }
                             shadow += projected_depth >= light_depth_value + light_depth_bias ? 1.0 : 0.0;        
                         }    
                     }
@@ -301,12 +308,34 @@ export class Shadow_Textured_Phong_Shader extends defs.Phong_Shader {
                             light_tex_coord.y >= 0.0 &&
                             light_tex_coord.y <= 1.0;
                               
-                        float shadowness = PCF_shadow(light_tex_coord.xy, projected_depth);
+                        float shadowness = PCF_shadow(light_tex_coord.xy, projected_depth, 0);
                         
                         if (inRange && shadowness > 0.3) {
                             diffuse *= 0.2 + 0.8 * (1.0 - shadowness);
                             specular *= 1.0 - shadowness;
                         }
+
+                        vec4 light_tex_coord_2 = (light_proj_mat_2 * light_view_mat_2 * vec4(vertex_worldspace, 1.0));
+                        // convert NDCS from light's POV to light depth texture coordinates
+                        light_tex_coord_2.xyz /= light_tex_coord_2.w; 
+                        light_tex_coord_2.xyz *= 0.5;
+                        light_tex_coord_2.xyz += 0.5;
+                        float light_depth_value_2 = texture2D( light_depth_texture_2, light_tex_coord_2.xy ).r;
+                        float projected_depth_2 = light_tex_coord_2.z;
+                        
+                        bool inRange_2 =
+                            light_tex_coord_2.x >= 0.0 &&
+                            light_tex_coord_2.x <= 1.0 &&
+                            light_tex_coord_2.y >= 0.0 &&
+                            light_tex_coord_2.y <= 1.0;
+                              
+                        float shadowness_2 = PCF_shadow(light_tex_coord_2.xy, projected_depth_2, 2);
+                        
+                        if (inRange_2 && shadowness_2 > 0.3) {
+                            diffuse *= 0.2 + 0.8 * (1.0 - shadowness_2);
+                            specular *= 1.0 - shadowness_2;
+                        }
+                
                     }
                     
                     gl_FragColor.xyz += diffuse + specular;
@@ -335,6 +364,12 @@ export class Shadow_Textured_Phong_Shader extends defs.Phong_Shader {
             // shadow related
             gl.uniformMatrix4fv(gpu.light_view_mat, false, Matrix.flatten_2D_to_1D(gpu_state.light_view_mat.transposed()));
             gl.uniformMatrix4fv(gpu.light_proj_mat, false, Matrix.flatten_2D_to_1D(gpu_state.light_proj_mat.transposed()));
+
+
+            // const PCM_2 = gpu_state.projection_transform_2.times(gpu_state.view_mat_2).times(model_transform);
+            // gl.uniformMatrix4fv(gpu.projection_camera_model_transform_2, false, Matrix.flatten_2D_to_1D(PCM_2.transposed()));
+            gl.uniformMatrix4fv(gpu.light_view_mat_2, false, Matrix.flatten_2D_to_1D(gpu_state.light_view_mat_2.transposed()));
+            gl.uniformMatrix4fv(gpu.light_proj_mat_2, false, Matrix.flatten_2D_to_1D(gpu_state.light_proj_mat_2.transposed()));
 
             // Omitting lights will show only the material color, scaled by the ambient term:
             if (!gpu_state.lights.length)
@@ -377,6 +412,12 @@ export class Shadow_Textured_Phong_Shader extends defs.Phong_Shader {
                     context.activeTexture(context["TEXTURE" + 1]);
                     material.light_depth_texture.activate(context, 1);
                 }
+                context.uniform1i(gpu_addresses.light_depth_texture_2, 3); // 1 for light-view depth texture}
+                if (material.light_depth_texture_2 && material.light_depth_texture_2.ready) {
+                    context.activeTexture(context["TEXTURE" + 3]);
+                    material.light_depth_texture_2.activate(context, 3);
+                }
+
             }
             else {
                 context.uniform1i(gpu_addresses.draw_shadow, 0);
