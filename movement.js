@@ -15,6 +15,10 @@ export class Constrained_Movement_Controls extends Scene {
         this.top = vec3(0,1,0);
         this.current_camera_location = Mat4.look_at(vec3(0, 6, 20), vec3(0, 0, 0), vec3(0, 1, 0));
         this.blocks = blocks;
+        this.jump = 0;
+        this.startjumptime = -1;
+        this.startjumppos;
+        this.startlookat;
     }
     make_control_panel() {
         // Draw the scene's buttons, setup their actions and keyboard shortcuts, and monitor live measurements.
@@ -26,9 +30,10 @@ export class Constrained_Movement_Controls extends Scene {
         this.key_triggered_button("Look down", ["k"], () => this.direction[3] = 1, undefined, () => this.direction[3] = 0);
         this.key_triggered_button("Look right", ["l"], () => this.direction[1] = 1, undefined, () => this.direction[1] = 0);
         this.key_triggered_button("Look left", ["j"], () => this.direction[0] = 1, undefined, () => this.direction[0] = 0);
+        this.key_triggered_button("Jump", [" "], () => this.jump = 1, undefined, () => this.jump = this.jump);
     }
     display(context, program_state) {
-
+        let t = program_state.animation_time / 1000;
         // Position and look_at after movement
         let proposed_position = this.position;
         let proposed_look_at = this.look_at;
@@ -37,30 +42,30 @@ export class Constrained_Movement_Controls extends Scene {
         if (this.thrust[2] == 1){
             let look_direction = this.look_at.minus(this.position);
             look_direction = vec3(look_direction[0], 0, look_direction[2]).normalized();
-            proposed_position = this.position.plus(look_direction.times(0.5));
-            proposed_look_at = this.look_at.plus(look_direction.times(0.5));
+            proposed_position = this.position.plus(look_direction.times(0.1));
+            proposed_look_at = this.look_at.plus(look_direction.times(0.1));
         }
         // Move backward
         if (this.thrust[3] == 1){
             let look_direction = this.look_at.minus(this.position);
             look_direction = vec3(look_direction[0], 0, look_direction[2]).normalized();
-            proposed_position = this.position.minus(look_direction.times(0.3));
-            proposed_look_at = this.look_at.minus(look_direction.times(0.3));
+            proposed_position = this.position.minus(look_direction.times(0.1));
+            proposed_look_at = this.look_at.minus(look_direction.times(0.1));
 
         }
         // Move right
         if (this.thrust[1] == 1){
             let look_direction = this.look_at.minus(this.position);
             let right = look_direction.cross(vec3(0,1,0)).normalized();
-            proposed_position = this.position.plus(right.times(0.3));
-            proposed_look_at = this.look_at.plus(right.times(0.3));
+            proposed_position = this.position.plus(right.times(0.1));
+            proposed_look_at = this.look_at.plus(right.times(0.1));
         }
         // Move left
         if (this.thrust[0] == 1) {
             let look_direction = this.look_at.minus(this.position);
             let right = look_direction.cross(vec3(0,1,0)).normalized();
-            proposed_position = this.position.minus(right.times(0.5));
-            proposed_look_at = this.look_at.minus(right.times(0.5));
+            proposed_position = this.position.minus(right.times(0.1));
+            proposed_look_at = this.look_at.minus(right.times(0.1));
         }
         
         if (this.direction[2] == 1) {
@@ -129,7 +134,7 @@ export class Constrained_Movement_Controls extends Scene {
         let floorOffset = 3;
         let blockSize = 2;
         let posX = proposed_position[0];
-        let posY = proposed_position[1] - floorOffset;
+        let posY = proposed_position[1];
         let posZ = proposed_position[2];
         
         let collide = false;
@@ -139,7 +144,7 @@ export class Constrained_Movement_Controls extends Scene {
            let blockZ = this.blocks[i][2];
             
             // Assume a bounding hitbox of 2 units
-           if (blockX + blockSize > posX && blockX < posX + blockSize && blockY + blockSize > posY && blockY < posY + blockSize + floorOffset && blockZ + blockSize > posZ && blockZ < posZ + blockSize) {
+           if (blockX + blockSize > posX && blockX < posX + blockSize && (posY < blockY + 1 && posY > blockY - 1 || posY-2.9 < blockY + 1 && posY-2.9 > blockY - 1) && blockZ + blockSize > posZ && blockZ < posZ + blockSize) {
                 collide = true;
                 break;
            }
@@ -149,7 +154,53 @@ export class Constrained_Movement_Controls extends Scene {
             this.position = proposed_position;
             this.look_at = proposed_look_at;
         }
-        
+
+        if (this.jump == 1){
+            if(this.startjumptime == -1){
+                this.startjumptime= t;
+                this.startjumppos = this.position[1];
+                this.startlookat = this.look_at[1]
+            }
+            this.position[1] = this.startjumppos + -8*(t-this.startjumptime)**2 + 10*(t-this.startjumptime);
+            this.look_at[1] = this.startlookat + -8*(t-this.startjumptime)**2 + 10*(t-this.startjumptime);
+        }
+        else if (this.jump == 2){
+            if(this.startjumptime == -1){
+                this.startjumptime= t;
+                this.startjumppos = this.position[1];
+                this.startlookat = this.look_at[1]
+            }
+            this.position[1] = this.startjumppos + -8*(t-this.startjumptime)**2;
+            this.look_at[1] = this.startlookat + -8*(t-this.startjumptime)**2;
+        }
+        let falling = true;
+        if(this.position[1] <=3){
+            falling = false;
+        }
+        if (this.position[1] < 3){
+            this.jump = 0;
+            this.startjumptime = -1;
+            this.position[1] = 3;
+    
+        }
+        else{
+            for (let i = 0; i < this.blocks.length; i++) {
+                let blockX = this.blocks[i][0];
+                let blockY = this.blocks[i][1];
+                let blockZ = this.blocks[i][2];
+                if (this.position[0] < blockX + 1 && this.position[0] > blockX-1 && this.position[2] < blockZ + 1 && this.position[2] > blockZ-1 && this.position[1] < 3 + blockY + 1 && this.position[1] > blockY+3.5){
+                    this.jump = 0;
+                    this.startjumptime = -1;
+                    this.position[1] = blockY + 4;
+                    falling = false;
+                }
+            }
+            if(falling){
+                if (this.jump == 0){
+                    this.jump = 2;
+                }
+            }
+        }
 
         program_state.set_camera(Mat4.look_at(this.position, this.look_at, vec3(0, 1, 0)));
     }
