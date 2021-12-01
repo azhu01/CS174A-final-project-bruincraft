@@ -291,7 +291,9 @@ export class Shadow_Textured_Phong_Shader extends defs.Phong_Shader {
                     
                     // Compute an initial (ambient) color:
                     gl_FragColor = vec4( ( tex_color.xyz + shape_color.xyz ) * ambient, shape_color.w * tex_color.w ); 
-                    
+                    if (f_tex_coord[0] < 0.1 || f_tex_coord[0] > 0.9 || f_tex_coord[1] < 0.1 || f_tex_coord[1] > 0.9){
+                            gl_FragColor = vec4(0,0,0,1.0);
+                    }
                     // Compute the final color with contributions from lights:
                     vec3 diffuse, specular;
                     vec3 other_than_ambient = phong_model_lights( normalize( N ), vertex_worldspace, diffuse, specular );

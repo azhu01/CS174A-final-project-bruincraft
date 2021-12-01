@@ -190,10 +190,11 @@ export class Constrained_Movement_Controls extends Scene {
                 let blockZ = this.blocks[i][2];
                 if (this.position[0] < blockX + blockSize && this.position[0] > blockX-blockSize && this.position[2] < blockZ + blockSize && this.position[2] > blockZ-blockSize){
                     //upper sliver
-                    if (this.position[1] < 3 + blockY + 1 && this.position[1] > blockY+3.5){
+                    if (this.position[1] <= 3 + blockY + 1 && this.position[1] > blockY+3.5 && this.startjumptime != t){
                         this.jump = 0;
                         this.startjumptime = -1;
                         this.position[1] = blockY + 4;
+                        this.look_at = proposed_look_at;
                         falling = false;
                     }
                     

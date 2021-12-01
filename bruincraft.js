@@ -34,6 +34,13 @@ export class BruinCraft extends Scene {
                 sun_texture: null
             }),
 
+            block: new Material(new Texture_Block, {
+                color: color(1, 1, 1, 1), ambient: .3, diffusivity: 0.6, specularity: 0.4, smoothness: 64,
+                color_texture: null,
+                light_depth_textures: [],
+                sun_texture: null
+            }),
+
             // For the first pass
             pure: new Material(new Color_Phong_Shader(), {
             }),
@@ -56,14 +63,14 @@ export class BruinCraft extends Scene {
         //directed lights
         this.lights = [];
 
-        this.blocks.push([0, 0, 0]);
-        this.blocks.push([0, 2, 0]);
-        this.blocks.push([0, 4, 0]);
-        this.blocks.push([0, 6, 0]);
-        this.blocks.push([4, 0, 0]);
-        this.blocks.push([4, 2, 0]);
-        this.blocks.push([4, 4, 0]);
-        this.blocks.push([4, 6, 0]);
+        this.blocks.push([0, 1, 0]);
+        this.blocks.push([0, 3, 0]);
+        this.blocks.push([0, 5, 0]);
+        this.blocks.push([0, 7, 0]);
+        this.blocks.push([4, 1, 0]);
+        this.blocks.push([4, 3, 0]);
+        this.blocks.push([4, 5, 0]);
+        this.blocks.push([4, 7, 0]);
 
         this.blocks.push([8, 1, 0]);
         this.blocks.push([12, 3, 0]);
@@ -335,6 +342,91 @@ export class BruinCraft extends Scene {
         // );
     }
     
+}
+
+class Texture_Block extends Shadow_Textured_Phong_Shader {
+    fragment_glsl_code() {
+        return this.shared_glsl_code() + `
+                varying vec2 f_tex_coord;
+                uniform sampler2D texture;
+                uniform mat4 light_view_mats[N_LIGHTS];
+                uniform mat4 light_proj_mats[N_LIGHTS];
+                uniform sampler2D light_depth_textures[N_LIGHTS];
+                uniform mat4 sun_view_mat;
+                uniform mat4 sun_proj_mat;
+                uniform sampler2D sun_texture;
+                uniform float animation_time;
+                uniform float light_depth_bias;
+                uniform bool use_texture;
+                uniform bool draw_shadow;
+                uniform float light_texture_size;
+                
+                void main(){
+                    // Sample the texture image in the correct place:
+                    vec4 tex_color = texture2D( texture, f_tex_coord );
+                    if (!use_texture)
+                        tex_color = vec4(0, 0, 0, 1);
+                    if( tex_color.w < .01 ) discard;
+                    if (f_tex_coord[0] < 0.1 || f_tex_coord[0] > 0.9 || f_tex_coord[1] < 0.1 || f_tex_coord[1] > 0.9){
+                            tex_color = vec4(0,0,0,1.0);
+                    }
+                    // Compute an initial (ambient) color:
+                    gl_FragColor = vec4( ( tex_color.xyz + shape_color.xyz ) * ambient, shape_color.w * tex_color.w ); 
+                    
+                    // Compute the final color with contributions from lights:
+                    vec3 diffuse, specular;
+                    vec3 other_than_ambient = phong_model_lights( normalize( N ), vertex_worldspace, diffuse, specular );
+                    vec3 sun_light = sunlight_model_lights( frag_normal );
+
+                    
+                    // Deal with shadow:
+                    if (draw_shadow) {
+                        for (int i = 0; i <= N_LIGHTS; i++) {
+
+                            vec4 light_tex_coord = (light_proj_mats[i] * light_view_mats[i] * vec4(vertex_worldspace, 1.0));
+                            if (i == N_LIGHTS) {
+                                light_tex_coord = (sun_proj_mat * sun_view_mat * vec4(vertex_worldspace, 1.0));
+                            }
+                            // convert NDCS from light's POV to light depth texture coordinates
+                            light_tex_coord.xyz /= light_tex_coord.w; 
+                            light_tex_coord.xyz *= 0.5;
+                            light_tex_coord.xyz += 0.5;
+                            float projected_depth = light_tex_coord.z;
+                            
+                            bool inRange =
+                                light_tex_coord.x >= 0.0 &&
+                                light_tex_coord.x <= 1.0 &&
+                                light_tex_coord.y >= 0.0 &&
+                                light_tex_coord.y <= 1.0;
+
+                            float shadow = 0.0;
+                            float texel_size = 1.0 / light_texture_size;
+
+                            vec2 center = light_tex_coord.xy;
+        
+                            for(int x = -1; x <= 1; ++x)
+                            {
+                                for(int y = -1; y <= 1; ++y)
+                                {
+                                    float light_depth_value = texture2D(light_depth_textures[0], center + vec2(x, y) * texel_size).r;
+                                    ${this.makeAllCases()}
+                                    shadow += projected_depth >= light_depth_value + light_depth_bias ? 1.0 : 0.0;        
+                                }    
+                            }
+                            shadow /= 9.0;
+                                
+                            float shadowness = shadow;
+                            
+                            if (inRange && shadowness > 0.3) {
+                                diffuse *= 0.2 + 0.8 * (1.0 - shadowness);
+                                specular *= 1.0 - shadowness;
+                            }
+                        }
+                    }
+                    
+                    gl_FragColor.xyz += diffuse + specular + sun_light;
+                } `;
+    }
 }
 
 
