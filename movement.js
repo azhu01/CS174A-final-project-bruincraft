@@ -132,7 +132,7 @@ export class Constrained_Movement_Controls extends Scene {
 
         // Collision Detection Handling
         let floorOffset = 3;
-        let blockSize = 2;
+        let blockSize = 1.25;
         let posX = proposed_position[0];
         let posY = proposed_position[1];
         let posZ = proposed_position[2];
@@ -161,12 +161,12 @@ export class Constrained_Movement_Controls extends Scene {
                 this.startjumppos = this.position[1];
                 this.startlookat = this.look_at[1]
             }
-            this.position[1] = this.startjumppos + -8*(t-this.startjumptime)**2 + 10*(t-this.startjumptime);
-            this.look_at[1] = this.startlookat + -8*(t-this.startjumptime)**2 + 10*(t-this.startjumptime);
+            this.position[1] = this.startjumppos + -8*(t-this.startjumptime)**2 + 11*(t-this.startjumptime);
+            this.look_at[1] = this.startlookat + -8*(t-this.startjumptime)**2 + 11*(t-this.startjumptime);
         }
         else if (this.jump == 2){
             if(this.startjumptime == -1){
-                this.startjumptime= t;
+                this.startjumptime= t-0.1;
                 this.startjumppos = this.position[1];
                 this.startlookat = this.look_at[1]
             }
@@ -188,11 +188,21 @@ export class Constrained_Movement_Controls extends Scene {
                 let blockX = this.blocks[i][0];
                 let blockY = this.blocks[i][1];
                 let blockZ = this.blocks[i][2];
-                if (this.position[0] < blockX + 1 && this.position[0] > blockX-1 && this.position[2] < blockZ + 1 && this.position[2] > blockZ-1 && this.position[1] < 3 + blockY + 1 && this.position[1] > blockY+3.5){
-                    this.jump = 0;
-                    this.startjumptime = -1;
-                    this.position[1] = blockY + 4;
-                    falling = false;
+                if (this.position[0] < blockX + blockSize && this.position[0] > blockX-blockSize && this.position[2] < blockZ + blockSize && this.position[2] > blockZ-blockSize){
+                    //upper sliver
+                    if (this.position[1] < 3 + blockY + 1 && this.position[1] > blockY+3.5){
+                        this.jump = 0;
+                        this.startjumptime = -1;
+                        this.position[1] = blockY + 4;
+                        falling = false;
+                    }
+                    
+
+                    //bottom sliver
+                    if (this.position[1] > blockY-blockSize && this.position[1] < blockY-0.5){
+                        this.jump = 2;
+                       this.startjumptime = -1;
+                   }
                 }
             }
             if(falling){
@@ -205,3 +215,4 @@ export class Constrained_Movement_Controls extends Scene {
         program_state.set_camera(Mat4.look_at(this.position, this.look_at, vec3(0, 1, 0)));
     }
 }
+
