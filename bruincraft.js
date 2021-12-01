@@ -1,7 +1,7 @@
 import {defs, tiny} from './examples/common.js';
 import { DirectedLight } from './light.js';
 import { Constrained_Movement_Controls } from './movement.js';
-import {Background_Shader, Color_Phong_Shader, Shadow_Textured_Phong_Shader,
+import {Background_Shader, Color_Phong_Shader, Shadow_Textured_Phong_Shader, Texture_Block,
     Depth_Texture_Shader_2D, Buffered_Texture, LIGHT_DEPTH_TEX_SIZE} from './shaders.js'
 
 const {
@@ -76,8 +76,10 @@ export class BruinCraft extends Scene {
         this.blocks.push([12, 3, 0]);
         this.blocks.push([16, 5, 0]);
 
-        this.timescale = 1; //minutes / day -- realtime is 1440 minutes per day
-        this.time = 0.0; 
+        this.minsPerDay = 1; //minutes per day -- realtime is 1440 minutes per day
+        this.time = 720.0; //goes from 0 to 1440 minutes (12am - 12pm)
+                        //time starts off at noon
+                        // 
 
         this.lightDepthTextures = [];
         this.lightDepthFramebuffers = [];
@@ -204,7 +206,15 @@ export class BruinCraft extends Scene {
         this.shapes.background.draw(context, program_state, program_state.camera_transform.times(Mat4.translation(0, 0, -999.9)).times(Mat4.scale(10000, 10000, 1)), this.materials.background);
     }
     display(context, program_state) {
-        const t = program_state.animation_time;
+        const t = program_state.animation_time/ 1000;
+        const dt = program_state.animation_delta_time / 1000;
+
+        this.time += dt / 60.0 / this.minsPerDay * 1440;
+        this.time %= 1440;
+
+        const blue = hex_color("#B0FFFF");
+        const purple = hex_color("#C8A2C8");
+
         const gl = context.context;
 
         if (!this.init_ok) {
@@ -215,9 +225,9 @@ export class BruinCraft extends Scene {
 
             this.add_sun(gl);
 
-            let light_position = Mat4.rotation(0 / 1500, 0, 1, 0).times(vec4(0, 10, 0, 1));
-            let light_position_2 = Mat4.rotation(0 / 1500, 0, 1, 0).times(vec4(10, 10, 4, 1));
-            let light_position_3 = Mat4.rotation(0 / 1500, 0, 1, 0).times(vec4(10, 10, -4, 1));
+            let light_position = vec4(0, 10, 0, 1);
+            let light_position_2 = vec4(10, 10, 4, 1);
+            let light_position_3 = vec4(10, 10, -4, 1);
             let light_position_4 = vec4(5, 10, 0, 1);
 
 
@@ -235,9 +245,9 @@ export class BruinCraft extends Scene {
 
             let light_field_of_view = 130 * Math.PI / 180; // 130 degree
 
-            this.add_light_source(new DirectedLight(light_position, light_color, 1000, light_view_target, light_field_of_view), gl);
-            //this.add_light_source(new DirectedLight(light_position_2, light_color_2, 1000, light_view_target_2, light_field_of_view), gl);
-            //this.add_light_source(new DirectedLight(light_position_3, light_color_3, 1000, light_view_target_3, light_field_of_view), gl);
+            this.add_light_source(new DirectedLight(light_position, light_color, 100, light_view_target, light_field_of_view), gl);
+            //this.add_light_source(new DirectedLight(light_position_2, light_color_2, 100, light_view_target_2, light_field_of_view), gl);
+            this.add_light_source(new DirectedLight(light_position_3, light_color_3, 1000, light_view_target_3, light_field_of_view), gl);
             //this.add_light_source(new DirectedLight(light_position_4, light_color_4, 1000, light_view_target_4, light_field_of_view), gl);
 
 
@@ -253,9 +263,15 @@ export class BruinCraft extends Scene {
         
         program_state.lights = this.lights.map(x => x.light);
 
+        //console.log(purple);
+
+        program_state.sky_color = blue.plus(purple.minus(blue).times(0.5 + 0.5 * Math.sin(this.time * 0.025)));
+        // console.log(blue);
+        // console.log(program_state.sky_color);
+
         //Sun stuff
 
-        let sun_position = vec3(0, 5, 10);
+        let sun_position = vec3(0, 5, 10 + Math.sin(t * 0.025));
 
         program_state.sunlight_direction = sun_position;
 
@@ -343,90 +359,4 @@ export class BruinCraft extends Scene {
     }
     
 }
-
-class Texture_Block extends Shadow_Textured_Phong_Shader {
-    fragment_glsl_code() {
-        return this.shared_glsl_code() + `
-                varying vec2 f_tex_coord;
-                uniform sampler2D texture;
-                uniform mat4 light_view_mats[N_LIGHTS];
-                uniform mat4 light_proj_mats[N_LIGHTS];
-                uniform sampler2D light_depth_textures[N_LIGHTS];
-                uniform mat4 sun_view_mat;
-                uniform mat4 sun_proj_mat;
-                uniform sampler2D sun_texture;
-                uniform float animation_time;
-                uniform float light_depth_bias;
-                uniform bool use_texture;
-                uniform bool draw_shadow;
-                uniform float light_texture_size;
-                
-                void main(){
-                    // Sample the texture image in the correct place:
-                    vec4 tex_color = texture2D( texture, f_tex_coord );
-                    if (!use_texture)
-                        tex_color = vec4(0, 0, 0, 1);
-                    if( tex_color.w < .01 ) discard;
-                    if (f_tex_coord[0] < 0.1 || f_tex_coord[0] > 0.9 || f_tex_coord[1] < 0.1 || f_tex_coord[1] > 0.9){
-                            tex_color = vec4(0,0,0,1.0);
-                    }
-                    // Compute an initial (ambient) color:
-                    gl_FragColor = vec4( ( tex_color.xyz + shape_color.xyz ) * ambient, shape_color.w * tex_color.w ); 
-                    
-                    // Compute the final color with contributions from lights:
-                    vec3 diffuse, specular;
-                    vec3 other_than_ambient = phong_model_lights( normalize( N ), vertex_worldspace, diffuse, specular );
-                    vec3 sun_light = sunlight_model_lights( frag_normal );
-
-                    
-                    // Deal with shadow:
-                    if (draw_shadow) {
-                        for (int i = 0; i <= N_LIGHTS; i++) {
-
-                            vec4 light_tex_coord = (light_proj_mats[i] * light_view_mats[i] * vec4(vertex_worldspace, 1.0));
-                            if (i == N_LIGHTS) {
-                                light_tex_coord = (sun_proj_mat * sun_view_mat * vec4(vertex_worldspace, 1.0));
-                            }
-                            // convert NDCS from light's POV to light depth texture coordinates
-                            light_tex_coord.xyz /= light_tex_coord.w; 
-                            light_tex_coord.xyz *= 0.5;
-                            light_tex_coord.xyz += 0.5;
-                            float projected_depth = light_tex_coord.z;
-                            
-                            bool inRange =
-                                light_tex_coord.x >= 0.0 &&
-                                light_tex_coord.x <= 1.0 &&
-                                light_tex_coord.y >= 0.0 &&
-                                light_tex_coord.y <= 1.0;
-
-                            float shadow = 0.0;
-                            float texel_size = 1.0 / light_texture_size;
-
-                            vec2 center = light_tex_coord.xy;
-        
-                            for(int x = -1; x <= 1; ++x)
-                            {
-                                for(int y = -1; y <= 1; ++y)
-                                {
-                                    float light_depth_value = texture2D(light_depth_textures[0], center + vec2(x, y) * texel_size).r;
-                                    ${this.makeAllCases()}
-                                    shadow += projected_depth >= light_depth_value + light_depth_bias ? 1.0 : 0.0;        
-                                }    
-                            }
-                            shadow /= 9.0;
-                                
-                            float shadowness = shadow;
-                            
-                            if (inRange && shadowness > 0.3) {
-                                diffuse *= 0.2 + 0.8 * (1.0 - shadowness);
-                                specular *= 1.0 - shadowness;
-                            }
-                        }
-                    }
-                    
-                    gl_FragColor.xyz += diffuse + specular + sun_light;
-                } `;
-    }
-}
-
 

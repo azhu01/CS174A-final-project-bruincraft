@@ -14,6 +14,7 @@ export class Background_Shader extends Shader {
         context.uniformMatrix4fv(gpu_addresses.model_transform, false, Matrix.flatten_2D_to_1D(model_transform.transposed()));
         context.uniformMatrix4fv(gpu_addresses.projection_camera_model_transform, false,
             Matrix.flatten_2D_to_1D(PCM.transposed()));
+        context.uniform3fv(gpu_addresses.sky_color, [graphics_state.sky_color[0], graphics_state.sky_color[1], graphics_state.sky_color[2]]);
     }
 
     shared_glsl_code() {
@@ -21,6 +22,7 @@ export class Background_Shader extends Shader {
         return `
         precision mediump float;
         varying vec4 world_point_position;
+        uniform vec3 sky_color;
         `;
     }
 
@@ -42,7 +44,7 @@ export class Background_Shader extends Shader {
         return this.shared_glsl_code() + `
         void main(){
           //
-          vec3 color = vec3(0.69, 1.0, 1.0);
+          vec3 color = sky_color;
           float diff = clamp((1.0 - color.x) / 300.0 * (300.0 - world_point_position.y), 0.0, 1.0);
           color.x = color.x + diff;
           gl_FragColor = vec4(color, 1.0);
@@ -451,6 +453,91 @@ export class Shadow_Textured_Phong_Shader extends defs.Phong_Shader {
             }
         }
     }
+
+export class Texture_Block extends Shadow_Textured_Phong_Shader {
+    fragment_glsl_code() {
+        return this.shared_glsl_code() + `
+                varying vec2 f_tex_coord;
+                uniform sampler2D texture;
+                uniform mat4 light_view_mats[N_LIGHTS];
+                uniform mat4 light_proj_mats[N_LIGHTS];
+                uniform sampler2D light_depth_textures[N_LIGHTS];
+                uniform mat4 sun_view_mat;
+                uniform mat4 sun_proj_mat;
+                uniform sampler2D sun_texture;
+                uniform float animation_time;
+                uniform float light_depth_bias;
+                uniform bool use_texture;
+                uniform bool draw_shadow;
+                uniform float light_texture_size;
+                
+                void main(){
+                    // Sample the texture image in the correct place:
+                    vec4 tex_color = texture2D( texture, f_tex_coord );
+                    if (!use_texture)
+                        tex_color = vec4(0, 0, 0, 1);
+                    if( tex_color.w < .01 ) discard;
+                    if (f_tex_coord[0] < 0.1 || f_tex_coord[0] > 0.9 || f_tex_coord[1] < 0.1 || f_tex_coord[1] > 0.9){
+                            tex_color = vec4(0,0,0,1.0);
+                    }
+                    // Compute an initial (ambient) color:
+                    gl_FragColor = vec4( ( tex_color.xyz + shape_color.xyz ) * ambient, shape_color.w * tex_color.w ); 
+                    
+                    // Compute the final color with contributions from lights:
+                    vec3 diffuse, specular;
+                    vec3 other_than_ambient = phong_model_lights( normalize( N ), vertex_worldspace, diffuse, specular );
+                    vec3 sun_light = sunlight_model_lights( frag_normal );
+
+                    
+                    // Deal with shadow:
+                    if (draw_shadow) {
+                        for (int i = 0; i <= N_LIGHTS; i++) {
+
+                            vec4 light_tex_coord = (light_proj_mats[i] * light_view_mats[i] * vec4(vertex_worldspace, 1.0));
+                            if (i == N_LIGHTS) {
+                                light_tex_coord = (sun_proj_mat * sun_view_mat * vec4(vertex_worldspace, 1.0));
+                            }
+                            // convert NDCS from light's POV to light depth texture coordinates
+                            light_tex_coord.xyz /= light_tex_coord.w; 
+                            light_tex_coord.xyz *= 0.5;
+                            light_tex_coord.xyz += 0.5;
+                            float projected_depth = light_tex_coord.z;
+                            
+                            bool inRange =
+                                light_tex_coord.x >= 0.0 &&
+                                light_tex_coord.x <= 1.0 &&
+                                light_tex_coord.y >= 0.0 &&
+                                light_tex_coord.y <= 1.0;
+
+                            float shadow = 0.0;
+                            float texel_size = 1.0 / light_texture_size;
+
+                            vec2 center = light_tex_coord.xy;
+        
+                            for(int x = -1; x <= 1; ++x)
+                            {
+                                for(int y = -1; y <= 1; ++y)
+                                {
+                                    float light_depth_value = texture2D(light_depth_textures[0], center + vec2(x, y) * texel_size).r;
+                                    ${this.makeAllCases()}
+                                    shadow += projected_depth >= light_depth_value + light_depth_bias ? 1.0 : 0.0;        
+                                }    
+                            }
+                            shadow /= 9.0;
+                                
+                            float shadowness = shadow;
+                            
+                            if (inRange && shadowness > 0.3) {
+                                diffuse *= 0.2 + 0.8 * (1.0 - shadowness);
+                                specular *= 1.0 - shadowness;
+                            }
+                        }
+                    }
+                    
+                    gl_FragColor.xyz += diffuse + specular + sun_light;
+                } `;
+    }
+}
 
 export class Depth_Texture_Shader_2D extends defs.Phong_Shader {
         // **Textured_Phong** is a Phong Shader extended to addditionally decal a
