@@ -275,14 +275,14 @@ export class BruinCraft extends Scene {
 
         //Sun stuff
 
-        let sun_position = vec3(0, 5, 10 + Math.sin(t * 0.025));
+        let sun_position = vec3(0, 5, 15*Math.sin(0.05 * t));
 
         program_state.sunlight_direction = sun_position;
 
         const sun_view_mat = Mat4.look_at(
             vec3(sun_position[0], sun_position[1], sun_position[2]),
             vec3(0, 0, 0),
-            vec3(0, 1, 0), // assume the light to target will have a up dir of +y, maybe need to change according to your case
+            vec3(0, 1,  0.1), // assume the light to target will have a up dir of +y, maybe need to change according to your case
         );
         
         //const sun_proj_mat = Mat4.perspective(130 * Math.PI / 180, 1, 0.5, 2000);
