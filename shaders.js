@@ -184,7 +184,7 @@ export class Shadow_Textured_Phong_Shader extends defs.Phong_Shader {
                     vec3 result = vec3( 0.0 );
                     light_diffuse_contribution = vec3( 0.0 );
                     light_specular_contribution = vec3( 0.0 );
-                    for(int i = 0; i <= N_LIGHTS; i++){
+                    for(int i = 0; i < N_LIGHTS; i++){
                         // Lights store homogeneous coords - either a position or vector.  If w is 0, the 
                         // light will appear directional (uniform direction from all points), and we 
                         // simply obtain a vector towards the light by directly using the stored value.
@@ -306,10 +306,12 @@ export class Shadow_Textured_Phong_Shader extends defs.Phong_Shader {
                     if (draw_shadow) {
                         for (int i = 0; i <= N_LIGHTS; i++) {
 
-                            vec4 light_tex_coord = (light_proj_mats[i] * light_view_mats[i] * vec4(vertex_worldspace, 1.0));
-                            if (i == N_LIGHTS) {
-                                light_tex_coord = (sun_proj_mat * sun_view_mat * vec4(vertex_worldspace, 1.0));
+                            vec4 light_tex_coord = (sun_proj_mat * sun_view_mat * vec4(vertex_worldspace, 1.0));
+
+                            if (i < N_LIGHTS) {
+                                light_tex_coord = (light_proj_mats[i] * light_view_mats[i] * vec4(vertex_worldspace, 1.0));
                             }
+
                             // convert NDCS from light's POV to light depth texture coordinates
                             light_tex_coord.xyz /= light_tex_coord.w; 
                             light_tex_coord.xyz *= 0.5;

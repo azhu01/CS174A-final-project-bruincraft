@@ -73,8 +73,12 @@ export class BruinCraft extends Scene {
         this.blocks.push([4, 7, 0]);
 
         this.blocks.push([8, 1, 0]);
+        this.blocks.push([10, 3, 0]);
+        this.blocks.push([10, 1, 0]);
+        this.blocks.push([12, 5, 0]);
         this.blocks.push([12, 3, 0]);
-        this.blocks.push([16, 5, 0]);
+        this.blocks.push([12, 1, 0]);
+
 
         this.minsPerDay = 1; //minutes per day -- realtime is 1440 minutes per day
         this.time = 720.0; //goes from 0 to 1440 minutes (12am - 12pm)
@@ -203,7 +207,7 @@ export class BruinCraft extends Scene {
             this.shapes.block.draw(context, program_state, model_transform.times(Mat4.translation(curr[0], curr[1], curr[2])), shadow_pass? this.materials.floor.override({color: yellow}) : this.materials.pure);
         }
         this.shapes.floor.draw(context, program_state, model_transform.times(Mat4.rotation(3*Math.PI / 2, 1, 0, 0)).times(Mat4.scale(10000, 10000, 1)), shadow_pass? this.materials.floor.override({color: green}) : this.materials.pure);
-        this.shapes.background.draw(context, program_state, program_state.camera_transform.times(Mat4.translation(0, 0, -999.9)).times(Mat4.scale(10000, 10000, 1)), this.materials.background);
+        this.shapes.background.draw(context, program_state, program_state.camera_transform.times(Mat4.translation(0, 0, -990)).times(Mat4.scale(10000, 10000, 1)), this.materials.background);
     }
     display(context, program_state) {
         const t = program_state.animation_time/ 1000;
@@ -246,9 +250,9 @@ export class BruinCraft extends Scene {
             let light_field_of_view = 130 * Math.PI / 180; // 130 degree
 
             this.add_light_source(new DirectedLight(light_position, light_color, 100, light_view_target, light_field_of_view), gl);
-            //this.add_light_source(new DirectedLight(light_position_2, light_color_2, 100, light_view_target_2, light_field_of_view), gl);
+            this.add_light_source(new DirectedLight(light_position_2, light_color_2, 100, light_view_target_2, light_field_of_view), gl);
             this.add_light_source(new DirectedLight(light_position_3, light_color_3, 1000, light_view_target_3, light_field_of_view), gl);
-            //this.add_light_source(new DirectedLight(light_position_4, light_color_4, 1000, light_view_target_4, light_field_of_view), gl);
+            this.add_light_source(new DirectedLight(light_position_4, light_color_4, 1000, light_view_target_4, light_field_of_view), gl);
 
 
             this.init_ok = true;
