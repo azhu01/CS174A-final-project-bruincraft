@@ -1,5 +1,6 @@
 import {defs, tiny} from './examples/common.js';
 import {BruinCraft} from './bruincraft.js';
+import {Color_Phong_Shader} from './shaders.js'
 
 const {
     Vector, Vector3, vec, vec3, vec4, color, hex_color, Shader, Matrix, Mat4, Light, Shape, Material, Scene,
@@ -19,6 +20,16 @@ export class Constrained_Movement_Controls extends Scene {
         this.startjumptime = -1;
         this.startjumppos;
         this.startlookat;
+        this.swing = 0;
+        this.swingTime = 0;
+        this.swingSet = 0;
+
+        this.shapes = {
+            square_2d: new defs.Cube(),
+        };
+        this.materials = {
+            background: new Material(new Color_Phong_Shader()),
+        }            
     }
     make_control_panel() {
         // Draw the scene's buttons, setup their actions and keyboard shortcuts, and monitor live measurements.
@@ -31,6 +42,7 @@ export class Constrained_Movement_Controls extends Scene {
         this.key_triggered_button("Look right", ["l"], () => this.direction[1] = 1, undefined, () => this.direction[1] = 0);
         this.key_triggered_button("Look left", ["j"], () => this.direction[0] = 1, undefined, () => this.direction[0] = 0);
         this.key_triggered_button("Jump", [" "], () => this.jump = 1, undefined, () => this.jump = this.jump);
+        this.key_triggered_button("Swing", ["1"], () => this.swing = 1, undefined, () => this.swing = this.swing);
     }
     display(context, program_state) {
         let t = program_state.animation_time / 1000;
@@ -124,11 +136,35 @@ export class Constrained_Movement_Controls extends Scene {
             let vec4LookAt = vec4(this.look_at[0], this.look_at[1], this.look_at[2], 1);
             let model_transform = Mat4.identity();
             model_transform = model_transform.times(Mat4.translation(this.position[0], this.position[1], this.position[2]));
-            model_transform = model_transform.times(Mat4.rotation(-0.02, 0, 1, 0))
+            model_transform = model_transform.times(Mat4.rotation(-0.02, 0, 1, 0));
             model_transform = model_transform.times(Mat4.translation(this.position[0] * -1, this.position[1] * -1, this.position[2] * -1));
             vec4LookAt = model_transform.times(vec4LookAt);
             proposed_look_at = vec3(vec4LookAt[0], vec4LookAt[1], vec4LookAt[2]);
         }
+        
+
+        if (this.swing == 1 && this.swingSet == 0) {
+            this.swingSet = 1;
+            this.swing = 0;
+            this.swingTime = t;
+        } else if (this.swingSet == 1) {
+            //let newX = this.look_at[0] / Math.sqrt(this.look_at[0]*this.look_at[0] + this.look_at[1]*this.look_at[1] + this.look_at[2]*this.look_at[2]);
+            //let newY = this.look_at[1] / Math.sqrt(this.look_at[0]*this.look_at[0] + this.look_at[1]*this.look_at[1] + this.look_at[2]*this.look_at[2]);
+            //let newZ = this.look_at[2] / Math.sqrt(this.look_at[0]*this.look_at[0] + this.look_at[1]*this.look_at[1] + this.look_at[2]*this.look_at[2]);
+            //console.log(newX + ", " + newY + ", " + newZ);
+            
+            let model_transform = Mat4.identity();
+            model_transform = model_transform.times(Mat4.translation(this.position[0], this.position[1]-1, this.position[2] - 2));
+            model_transform = model_transform.times(Mat4.scale(0.1, 0.01, 2));
+            // add swing rotation
+            //model_transform = model_transform.times(Mat4.rotation(1, 0, 0.2, 0));
+            this.shapes.square_2d.draw(context, program_state, model_transform, this.materials.background);
+            if (t - this.swingTime > 1) {
+                this.swingSet = 0;
+            }
+            
+        }
+        
 
         // Collision Detection Handling
         let floorOffset = 3;
@@ -212,6 +248,8 @@ export class Constrained_Movement_Controls extends Scene {
                 }
             }
         }
+
+
 
         program_state.set_camera(Mat4.look_at(this.position, this.look_at, vec3(0, 1, 0)));
     }
