@@ -67,6 +67,7 @@ export class BruinCraft extends Scene {
         //directed lights
         this.lights = [];
         this.phantomBlock;
+        this.showPhantomBlock = true;
         this.blocks.push([0, 1, 0]);
         this.blocks.push([0, 3, 0]);
         this.blocks.push([0, 5, 0]);
@@ -98,6 +99,7 @@ export class BruinCraft extends Scene {
         // Draw the scene's buttons, setup their actions and keyboard shortcuts, and monitor live measurements.
         this.key_triggered_button("Add", ["v"], ()=>{this.addBlock()});
         this.key_triggered_button("Delete", ["x"], ()=>{this.deleteBlock()});
+        this.key_triggered_button("Toggle Phantom Block", ["t"], ()=>{this.showPhantomBlock = !this.showPhantomBlock})
     }
     /*
     x values are even
@@ -105,12 +107,14 @@ export class BruinCraft extends Scene {
     z values are even
     */
     addBlock(){
+        this.cmc.swing = 1;
         if(this.phantomBlock[1] >= 1) {
             this.blocks.push(this.phantomBlock);
         }
     }
     deleteBlock() {
         //console.log([x,y,z])
+        this.cmc.swing = 1;
         let x = this.phantomBlock[0]
         let y = this.phantomBlock[1]
         let z = this.phantomBlock[2]
@@ -231,24 +235,31 @@ export class BruinCraft extends Scene {
 
         let campos = this.cmc.position;
         let camlookat = this.cmc.look_at;
-        let blockplace = campos.plus((camlookat.minus(campos)).normalized().times(5));
+        let blockplace = campos.plus((camlookat.minus(campos)).normalized().times(6));
         let x = 2*Math.round(blockplace[0]/2);
         let y = Math.max(2*Math.floor(blockplace[1]/2)+1,1);
         let z = 2*Math.round(blockplace[2]/2);
         this.phantomBlock = [x,y,z]
+
         let booleanvariable = false;
         for (let i = 0; i < this.blocks.length; i++) {
             let curr = this.blocks[i];
             if(curr[0] == this.phantomBlock[0] && curr[1] == this.phantomBlock[1] && curr[2] == this.phantomBlock[2]) {
                 booleanvariable = true;
-                this.shapes.block.draw(context, program_state, model_transform.times(Mat4.translation(this.phantomBlock[0], this.phantomBlock[1], this.phantomBlock[2])), shadow_pass ? this.materials.floor.override({color: red}) : this.materials.pure)
+                if(this.showPhantomBlock) {
+                    this.shapes.block.draw(context, program_state, model_transform.times(Mat4.translation(this.phantomBlock[0], this.phantomBlock[1], this.phantomBlock[2])), shadow_pass ? this.materials.floor.override({color: red}) : this.materials.pure)
+                } else {
+                    this.shapes.block.draw(context, program_state, model_transform.times(Mat4.translation(curr[0], curr[1], curr[2])), shadow_pass? this.materials.floor.override({color: yellow}) : this.materials.pure);
+                }
             } else {
                 this.shapes.block.draw(context, program_state, model_transform.times(Mat4.translation(curr[0], curr[1], curr[2])), shadow_pass? this.materials.floor.override({color: yellow}) : this.materials.pure);
             }
         }
         if(!booleanvariable) {
             if(this.phantomBlock[1] >= 1) {
-                this.shapes.block.draw(context, program_state, model_transform.times(Mat4.translation(this.phantomBlock[0], this.phantomBlock[1], this.phantomBlock[2])), shadow_pass ? this.materials.floor.override({color: green}) : this.materials.pure)
+                if(this.showPhantomBlock) {
+                    this.shapes.block.draw(context, program_state, model_transform.times(Mat4.translation(this.phantomBlock[0], this.phantomBlock[1], this.phantomBlock[2])), shadow_pass ? this.materials.floor.override({color: green}) : this.materials.pure)
+                }
             }
         }
         this.shapes.floor.draw(context, program_state, model_transform.times(Mat4.rotation(3*Math.PI / 2, 1, 0, 0)).times(Mat4.scale(10000, 10000, 1)), shadow_pass? this.materials.floor.override({color: green}) : this.materials.pure);
