@@ -504,13 +504,13 @@ export class Phantom_Block extends defs.Phong_Shader {
                     // Sample the texture image in the correct place:
                     vec4 tex_color = texture2D( texture, f_tex_coord );
                     if (!use_texture)
-                        tex_color = vec4(0, 0, 0, 1);
+                        tex_color = vec4(0, 0, 0, 0.4);
                     if( tex_color.w < .01 ) discard;
                     
                     // Compute an initial (ambient) color:
                     gl_FragColor = vec4( ( tex_color.xyz + shape_color.xyz ) * ambient, shape_color.w * tex_color.w ); 
                     if (f_tex_coord[0] < 0.1 || f_tex_coord[0] > 0.9 || f_tex_coord[1] < 0.1 || f_tex_coord[1] > 0.9){
-                            gl_FragColor = vec4(0,0,0,1.0);
+                            gl_FragColor = vec4(1.0,1.0,1.0,0.2);
                     }
                     // Compute the final color with contributions from lights:
 
