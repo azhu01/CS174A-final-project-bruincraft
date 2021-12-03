@@ -18,13 +18,18 @@ export class BruinCraft extends Scene {
             circle: new defs.Regular_2D_Polygon(1, 15),
             square_2d: new defs.Square(),
             block: new defs.Cube(),
+
             floor: new defs.Square(),
             background: new defs.Square()
+            
         };
 
         // *** Materials
         this.materials = {
             background: new Material(new Background_Shader()),
+            phantom: new Material(new defs.Phong_Shader(), {
+                color: color(1, 1, 1, 0.2), ambient: 0.5, diffusivity: 0, specularity: 0.5
+            }),
 
             // For the floor or other plain objects
             floor: new Material(new Shadow_Textured_Phong_Shader(), {
@@ -59,10 +64,9 @@ export class BruinCraft extends Scene {
 
         //coordinates
         this.blocks = [];
-
         //directed lights
         this.lights = [];
-
+        this.phantomBlock;
         this.blocks.push([0, 1, 0]);
         this.blocks.push([0, 3, 0]);
         this.blocks.push([0, 5, 0]);
@@ -92,15 +96,37 @@ export class BruinCraft extends Scene {
 
     make_control_panel() {
         // Draw the scene's buttons, setup their actions and keyboard shortcuts, and monitor live measurements.
+        this.key_triggered_button("Add", ["v"], ()=>{this.addBlock()});
+        this.key_triggered_button("Delete", ["x"], ()=>{this.deleteBlock()});
     }
-
+    /*
+    x values are even
+    y values are odd and >= 1
+    z values are even
+    */
+    addBlock(){
+        if(this.phantomBlock[1] >= 1) {
+            this.blocks.push(this.phantomBlock);
+        }
+    }
+    deleteBlock() {
+        //console.log([x,y,z])
+        let x = this.phantomBlock[0]
+        let y = this.phantomBlock[1]
+        let z = this.phantomBlock[2]
+        for(let i = 0; i < this.blocks.length; i++) { 
+            if(this.blocks[i][0]===x && this.blocks[i][1]===y && this.blocks[i][2]===z) {
+                // console.log(this.blocks[i])
+                // console.log(i)
+                this.blocks.splice(i,1);
+                break;
+            }
+        }
+    }
     add_light_source(light, gl) {
-
         this.lights.push(light);
         this.materials.floor.shader.num_lights = this.lights.length;
-
         this.texture_buffer_init(gl);
-
         this.lightDepthTextures.push(this.lightDepthTexture);
         this.lightDepthFramebuffers.push(this.lightDepthFramebuffer);
         this.materials.floor.light_depth_textures.push(this.light_depth_texture);
@@ -199,16 +225,58 @@ export class BruinCraft extends Scene {
 
         const yellow = hex_color("#fac91a");
         const green = hex_color("#228B22");
+        const red = hex_color("FF0000");
 
         let model_transform = Mat4.identity();
 
+        let campos = this.cmc.position;
+        let camlookat = this.cmc.look_at;
+        let blockplace = campos.plus((camlookat.minus(campos)).normalized().times(5));
+        let x = 2*Math.round(blockplace[0]/2);
+        let y = Math.max(2*Math.floor(blockplace[1]/2)+1,1);
+        let z = 2*Math.round(blockplace[2]/2);
+        this.phantomBlock = [x,y,z]
+        let booleanvariable = false;
         for (let i = 0; i < this.blocks.length; i++) {
             let curr = this.blocks[i];
-            this.shapes.block.draw(context, program_state, model_transform.times(Mat4.translation(curr[0], curr[1], curr[2])), shadow_pass? this.materials.floor.override({color: yellow}) : this.materials.pure);
+            if(curr[0] == this.phantomBlock[0] && curr[1] == this.phantomBlock[1] && curr[2] == this.phantomBlock[2]) {
+                booleanvariable = true;
+                this.shapes.block.draw(context, program_state, model_transform.times(Mat4.translation(this.phantomBlock[0], this.phantomBlock[1], this.phantomBlock[2])), shadow_pass ? this.materials.floor.override({color: red}) : this.materials.pure)
+            } else {
+                this.shapes.block.draw(context, program_state, model_transform.times(Mat4.translation(curr[0], curr[1], curr[2])), shadow_pass? this.materials.floor.override({color: yellow}) : this.materials.pure);
+            }
+        }
+        if(!booleanvariable) {
+            if(this.phantomBlock[1] >= 1) {
+                this.shapes.block.draw(context, program_state, model_transform.times(Mat4.translation(this.phantomBlock[0], this.phantomBlock[1], this.phantomBlock[2])), shadow_pass ? this.materials.floor.override({color: green}) : this.materials.pure)
+            }
         }
         this.shapes.floor.draw(context, program_state, model_transform.times(Mat4.rotation(3*Math.PI / 2, 1, 0, 0)).times(Mat4.scale(10000, 10000, 1)), shadow_pass? this.materials.floor.override({color: green}) : this.materials.pure);
         this.shapes.background.draw(context, program_state, program_state.camera_transform.times(Mat4.translation(0, 0, -990)).times(Mat4.scale(10000, 10000, 1)), this.materials.background);
     }
+    // my_mouse_down(e, pos, context, program_state) {
+    //     let pos_ndc_near = vec4(pos[0], pos[1], -1.0, 1.0);
+    //     let pos_ndc_far  = vec4(pos[0], pos[1],  1.0, 1.0);
+    //     let center_ndc_near = vec4(0.0, 0.0, -1.0, 1.0);
+    //     let P = program_state.projection_transform;
+    //     let V = program_state.camera_inverse;
+    //     let pos_world_near = Mat4.inverse(P.times(V)).times(pos_ndc_near);
+    //     let pos_world_far  = Mat4.inverse(P.times(V)).times(pos_ndc_far);
+    //     let center_world_near  = Mat4.inverse(P.times(V)).times(center_ndc_near);
+    //     pos_world_near.scale_by(1 / pos_world_near[3]);
+    //     pos_world_far.scale_by(1 / pos_world_far[3]);
+    //     center_world_near.scale_by(1 / center_world_near[3]);
+
+    //     console.log(pos_world_near);
+    //     console.log(pos_world_far);
+    //     this.blocks.push(
+    //         [
+    //             Math.round(pos_world_near[0]),
+    //             Math.round(pos_world_near[1]), 
+    //             0
+    //         ]);
+    //     console.log(Math.round(pos_world_near[0]))
+    // }
     display(context, program_state) {
         const t = program_state.animation_time/ 1000;
         const dt = program_state.animation_delta_time / 1000;
@@ -260,9 +328,27 @@ export class BruinCraft extends Scene {
 
        if (!context.scratchpad.controls) {
             this.children.push(context.scratchpad.controls = new Constrained_Movement_Controls(this.blocks));
-            console.log("initialized");
+            
+            console.log("Initialized");
             // Define the global camera and projection matrices, which are stored in program_state.
             program_state.set_camera(context.scratchpad.controls.current_camera_location);
+            this.cmc=(context.scratchpad.controls);
+            //implement mouse behavior
+            // let canvas = context.canvas;
+            // const mouse_position = (e, rect = canvas.getBoundingClientRect()) =>
+            //     vec((e.clientX - (rect.left + rect.right) / 2) / ((rect.right - rect.left) / 2),
+            //         (e.clientY - (rect.bottom + rect.top) / 2) / ((rect.top - rect.bottom) / 2));
+
+            // canvas.addEventListener("mousedown", e => {
+            //     e.preventDefault();
+            //     const rect = canvas.getBoundingClientRect()
+            //     console.log("e.clientX: " + e.clientX);
+            //     console.log("e.clientX - rect.left: " + (e.clientX - rect.left));
+            //     console.log("e.clientY: " + e.clientY);
+            //     console.log("e.clientY - rect.top: " + (e.clientY - rect.top));
+            //     console.log("mouse_position(e): " + mouse_position(e));
+            //     this.my_mouse_down(e, mouse_position(e), context, program_state);
+            // });
         }
         
         program_state.lights = this.lights.map(x => x.light);

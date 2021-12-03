@@ -43,6 +43,7 @@ export class Constrained_Movement_Controls extends Scene {
         this.key_triggered_button("Look left", ["j"], () => this.direction[0] = 1, undefined, () => this.direction[0] = 0);
         this.key_triggered_button("Jump", [" "], () => this.jump = 1, undefined, () => this.jump = this.jump);
         this.key_triggered_button("Swing", ["1"], () => this.swing = 1, undefined, () => this.swing = this.swing);
+
     }
     display(context, program_state) {
         let t = program_state.animation_time / 1000;
