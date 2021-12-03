@@ -1,7 +1,7 @@
 import {defs, tiny} from './examples/common.js';
 import { DirectedLight } from './light.js';
 import { Constrained_Movement_Controls } from './movement.js';
-import {Background_Shader, Color_Phong_Shader, Shadow_Textured_Phong_Shader, Texture_Block,
+import {Background_Shader, Color_Phong_Shader, Shadow_Textured_Phong_Shader, Texture_Block, Phantom_Block,
     Depth_Texture_Shader_2D, Buffered_Texture, LIGHT_DEPTH_TEX_SIZE} from './shaders.js'
 
 const {
@@ -27,7 +27,7 @@ export class BruinCraft extends Scene {
         // *** Materials
         this.materials = {
             background: new Material(new Background_Shader()),
-            phantom: new Material(new defs.Phong_Shader(), {
+            phantom: new Material(new Phantom_Block(), {
                 color: color(1, 1, 1, 0.2), ambient: 0.5, diffusivity: 0, specularity: 0.5
             }),
 
@@ -247,7 +247,7 @@ export class BruinCraft extends Scene {
             if(curr[0] == this.phantomBlock[0] && curr[1] == this.phantomBlock[1] && curr[2] == this.phantomBlock[2]) {
                 booleanvariable = true;
                 if(this.showPhantomBlock) {
-                    this.shapes.block.draw(context, program_state, model_transform.times(Mat4.translation(this.phantomBlock[0], this.phantomBlock[1], this.phantomBlock[2])), shadow_pass ? this.materials.floor.override({color: red}) : this.materials.pure)
+                    this.shapes.block.draw(context, program_state, model_transform.times(Mat4.translation(this.phantomBlock[0], this.phantomBlock[1], this.phantomBlock[2])), this.materials.phantom.override({color: red}))
                 } else {
                     this.shapes.block.draw(context, program_state, model_transform.times(Mat4.translation(curr[0], curr[1], curr[2])), shadow_pass? this.materials.floor.override({color: yellow}) : this.materials.pure);
                 }
@@ -258,7 +258,7 @@ export class BruinCraft extends Scene {
         if(!booleanvariable) {
             if(this.phantomBlock[1] >= 1) {
                 if(this.showPhantomBlock) {
-                    this.shapes.block.draw(context, program_state, model_transform.times(Mat4.translation(this.phantomBlock[0], this.phantomBlock[1], this.phantomBlock[2])), shadow_pass ? this.materials.floor.override({color: green}) : this.materials.pure)
+                    this.shapes.block.draw(context, program_state, model_transform.times(Mat4.translation(this.phantomBlock[0], this.phantomBlock[1], this.phantomBlock[2])), this.materials.phantom.override({color: green}) )
                 }
             }
         }
