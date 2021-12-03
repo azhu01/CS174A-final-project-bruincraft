@@ -148,18 +148,23 @@ export class Constrained_Movement_Controls extends Scene {
             this.swing = 0;
             this.swingTime = t;
         } else if (this.swingSet == 1) {
-            //let newX = this.look_at[0] / Math.sqrt(this.look_at[0]*this.look_at[0] + this.look_at[1]*this.look_at[1] + this.look_at[2]*this.look_at[2]);
-            //let newY = this.look_at[1] / Math.sqrt(this.look_at[0]*this.look_at[0] + this.look_at[1]*this.look_at[1] + this.look_at[2]*this.look_at[2]);
-            //let newZ = this.look_at[2] / Math.sqrt(this.look_at[0]*this.look_at[0] + this.look_at[1]*this.look_at[1] + this.look_at[2]*this.look_at[2]);
-            //console.log(newX + ", " + newY + ", " + newZ);
+            var firstAngle = Math.atan2(this.look_at[0], this.look_at[2]);
+            var secondAngle = Math.atan2(this.position[0], this.position[2]);
+            var angle = secondAngle - firstAngle;
+            if (angle < 0) { 
+                angle += 2 * 3.14; 
+            }
             
             let model_transform = Mat4.identity();
-            model_transform = model_transform.times(Mat4.translation(this.position[0], this.position[1]-1, this.position[2] - 2));
-            model_transform = model_transform.times(Mat4.scale(0.1, 0.01, 2));
-            // add swing rotation
-            //model_transform = model_transform.times(Mat4.rotation(1, 0, 0.2, 0));
+            
+            model_transform = model_transform.times(Mat4.translation(-1.5, -1.5, -1.5));
+            model_transform = model_transform.times(Mat4.translation(this.position[0] + 0.2*(this.look_at[0] - this.position[0]), this.position[1]-1, this.position[2] + 0.2*(this.look_at[2] - this.position[2])));
+            model_transform = model_transform.times(Mat4.scale(0.2, 0.2, 6));
+            model_transform = model_transform.times(Mat4.rotation((this.swingTime - t), 0, 0 ,1));
+
+
             this.shapes.square_2d.draw(context, program_state, model_transform, this.materials.background);
-            if (t - this.swingTime > 1) {
+            if (t - this.swingTime > 0.4) {
                 this.swingSet = 0;
             }
             
